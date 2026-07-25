@@ -5,11 +5,13 @@
 alter table public.expenses add column if not exists category text;
 
 -- 2. Add UPDATE RLS policies
-create policy if not exists "expenses_update" on public.expenses
+drop policy if exists "expenses_update" on public.expenses;
+create policy "expenses_update" on public.expenses
   for update to authenticated using (public.is_member(group_id))
   with check (public.is_member(group_id));
 
-create policy if not exists "settlements_update" on public.settlements
+drop policy if exists "settlements_update" on public.settlements;
+create policy "settlements_update" on public.settlements
   for update to authenticated using (public.is_member(group_id))
   with check (public.is_member(group_id));
 
