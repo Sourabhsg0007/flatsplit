@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { computeNetBalances, computeTotalSpent, computeTotalGroupExpenses, simplifyDebts, fmtMoney } from '../lib/balances'
 
 export default function Balances({ me, members, expenses, settlements, currency, onGoSettle }) {
+  const [expandedSpender, setExpandedSpender] = useState(null)
   const memberIds = members.map((m) => m.id)
   const net = computeNetBalances(memberIds, expenses, settlements)
   const totals = computeTotalSpent(memberIds, expenses)
@@ -35,13 +37,46 @@ export default function Balances({ me, members, expenses, settlements, currency,
           {members.map((m) => {
             const spent = totals[m.id] ?? 0
             const share = totalExpenses > 0 ? ((spent / totalExpenses) * 100).toFixed(0) : 0
+            const paidExpenses = expenses
+              .filter((expense) => expense.paid_by === m.id)
+              .sort((a, b) => `${b.expense_date}${b.created_at}`.localeCompare(`${a.expense_date}${a.created_at}`))
+            const isExpanded = expandedSpender === m.id
             return (
-              <li key={m.id} className="ledger-row">
-                <span className="ledger-name">
-                  {m.full_name}
-                  {m.id === me.id && <em className="you-tag">you</em>}
-                </span>
-                <span className="money">{fmtMoney(spent, currency)} <span className="pct">({share}%)</span></span>
+              <li key={m.id} className="person-spend-item">
+                <button
+                  type="button"
+                  className="ledger-row person-spend-toggle"
+                  onClick={() => setExpandedSpender(isExpanded ? null : m.id)}
+                  aria-expanded={isExpanded}
+                >
+                  <span className="ledger-name">
+                    {m.full_name}
+                    {m.id === me.id && <em className="you-tag">you</em>}
+                  </span>
+                  <span className="money">{fmtMoney(spent, currency)} <span className="pct">({share}%)</span></span>
+                </button>
+                {isExpanded && (
+                  <div className="person-expenses">
+                    {paidExpenses.length === 0 ? (
+                      <p className="empty">No expenses paid by {m.full_name} yet.</p>
+                    ) : (
+                      <ul className="person-expense-list">
+                        {paidExpenses.map((expense) => (
+                          <li key={expense.id} className="person-expense-row">
+                            <span className="person-expense-info">
+                              <span className="activity-desc">{expense.description}</span>
+                              <span className="activity-meta">
+                                {formatExpenseDate(expense.expense_date)}
+                                {expense.category ? ` · ${expense.category}` : ''}
+                              </span>
+                            </span>
+                            <span className="money">{fmtMoney(expense.amount, currency)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </li>
             )
           })}
@@ -94,4 +129,13 @@ export default function Balances({ me, members, expenses, settlements, currency,
       </section>
     </div>
   )
+}
+
+function formatExpenseDate(value) {
+  if (!value) return ''
+  return new Date(`${value}T00:00:00`).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }

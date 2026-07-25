@@ -175,6 +175,35 @@ input, select { font-family: var(--font-ui); }
   border-bottom: 1px dashed var(--line);
 }
 .ledger-row:last-child, .transfer-row:last-child { border-bottom: none; }
+.person-spend-item { border-bottom: 1px dashed var(--line); }
+.person-spend-item:last-child { border-bottom: none; }
+.person-spend-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.person-spend-toggle:hover { background: var(--paper); }
+.person-expenses {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  background: var(--paper);
+  border-radius: 10px;
+}
+.person-expense-list { list-style: none; margin: 0; padding: 0; }
+.person-expense-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.person-expense-row:last-child { border-bottom: none; }
+.person-expense-info { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .ledger-name { font-weight: 500; display: flex; align-items: center; gap: 8px; }
 .you-tag {
   font-style: normal;
