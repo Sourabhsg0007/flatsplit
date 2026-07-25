@@ -36,7 +36,7 @@ create table public.expenses (
   paid_by uuid not null references public.profiles (id),
   split_type text not null default 'equal'
     check (split_type in ('equal', 'exact', 'percent', 'shares')),
-  category text,
+  category text not null default 'Food & Groceries',
   expense_date date not null default current_date,
   created_by uuid not null references public.profiles (id),
   created_at timestamptz not null default now()

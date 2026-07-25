@@ -35,7 +35,7 @@ export default function AddExpense({ group, me, members, onSaved, onCancel, expe
     isEdit ? expenseToEdit.expense_date : new Date().toISOString().slice(0, 10)
   )
   const [splitType, setSplitType] = useState(isEdit ? expenseToEdit.split_type : 'equal')
-  const [category, setCategory] = useState(isEdit ? (expenseToEdit.category || '') : '')
+  const [category, setCategory] = useState(isEdit ? (expenseToEdit.category || 'Food & Groceries') : 'Food & Groceries')
   const [rows, setRows] = useState(defaultRows)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -64,6 +64,7 @@ export default function AddExpense({ group, me, members, onSaved, onCancel, expe
   async function save() {
     setError(null)
     if (!description.trim()) { setError('What was this expense for?'); return }
+    if (!category) { setError('Select a category.'); return }
     if (total <= 0) { setError('Enter an amount greater than zero.'); return }
     if (!preview || preview.error) { setError(preview?.error || 'Check the split values.'); return }
 
@@ -143,7 +144,6 @@ export default function AddExpense({ group, me, members, onSaved, onCancel, expe
         <label className="field">
           <span>Category</span>
           <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="">None</option>
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
