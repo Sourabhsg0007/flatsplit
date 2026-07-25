@@ -7,13 +7,15 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
   const [newName, setNewName] = useState(group.name)
   const [busy, setBusy] = useState(false)
 
-  async function copyCode() {
+  const inviteLink = `${window.location.origin}${window.location.pathname}?join=${group.invite_code}`
+
+  async function copyLink() {
     try {
-      await navigator.clipboard.writeText(group.invite_code)
+      await navigator.clipboard.writeText(inviteLink)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      window.prompt('Copy this invite code:', group.invite_code)
+      window.prompt('Copy this invite link:', inviteLink)
     }
   }
 
@@ -34,13 +36,14 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
     <div className="page">
       <section className="card">
         <h2 className="card-title">Invite flatmates</h2>
-        <p className="hint">
-          Ask them to sign up, choose &ldquo;Join with code&rdquo;, and enter this code:
-        </p>
-        <div className="invite-code" onClick={copyCode} role="button" tabIndex={0}>
-          <span className="code">{group.invite_code}</span>
-          <span className="copy-hint">{copied ? 'Copied!' : 'Tap to copy'}</span>
+        <p className="hint">Share this link — they&rsquo;ll join automatically after signing in:</p>
+        <div className="invite-code" onClick={copyLink} role="button" tabIndex={0}>
+          <span className="code" style={{ fontSize: '0.9rem', letterSpacing: '0.05em' }}>{inviteLink}</span>
+          <span className="copy-hint">{copied ? 'Copied!' : 'Tap to copy link'}</span>
         </div>
+        <p className="hint" style={{ textAlign: 'center' }}>
+          Or share the code: <strong>{group.invite_code}</strong>
+        </p>
       </section>
 
       <section className="card">

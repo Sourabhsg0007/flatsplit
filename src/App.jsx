@@ -39,6 +39,11 @@ export default function App() {
     if (tabParam && ['balances', 'activity', 'add', 'settle', 'group'].includes(tabParam)) {
       setTab(tabParam)
     }
+    const joinCode = params.get('join')
+    if (joinCode) {
+      localStorage.setItem('pendingInviteCode', joinCode)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
   }, [])
 
   // --- auth session ---
@@ -121,6 +126,23 @@ export default function App() {
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [activeGroupId, loadGroupData])
+
+  // Auto-join via invite link after auth
+  useEffect(() => {
+    const code = localStorage.getItem('pendingInviteCode')
+    if (!code || !session?.user || loading) return
+    localStorage.removeItem('pendingInviteCode')
+    ;(async () => {
+      const { data, error } = await supabase.rpc('join_group', { code })
+      if (error) {
+        alert(error.message.includes('Invalid') ? 'That invite link is invalid.' : error.message)
+        return
+      }
+      await loadProfileAndGroups()
+      if (data) setActiveGroupId(data)
+      setTab('balances')
+    })()
+  }, [session, loading, loadProfileAndGroups])
 
   // Refetch when the tab regains focus (belt and braces for mobile).
   useEffect(() => {
