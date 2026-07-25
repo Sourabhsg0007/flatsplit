@@ -29,7 +29,17 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', darkMode ? '#1A1F1D' : '#21312A')
   }, [darkMode])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tabParam = params.get('tab')
+    if (tabParam && ['balances', 'activity', 'add', 'settle', 'group'].includes(tabParam)) {
+      setTab(tabParam)
+    }
+  }, [])
 
   // --- auth session ---
   useEffect(() => {
