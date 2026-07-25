@@ -36,6 +36,7 @@ create table public.expenses (
   paid_by uuid not null references public.profiles (id),
   split_type text not null default 'equal'
     check (split_type in ('equal', 'exact', 'percent', 'shares')),
+  category text,
   expense_date date not null default current_date,
   created_by uuid not null references public.profiles (id),
   created_at timestamptz not null default now()
@@ -136,6 +137,9 @@ create policy "expenses_select" on public.expenses
 create policy "expenses_insert" on public.expenses
   for insert to authenticated
   with check (public.is_member(group_id) and created_by = auth.uid());
+create policy "expenses_update" on public.expenses
+  for update to authenticated using (public.is_member(group_id))
+  with check (public.is_member(group_id));
 create policy "expenses_delete" on public.expenses
   for delete to authenticated using (public.is_member(group_id));
 
@@ -156,6 +160,9 @@ create policy "settlements_select" on public.settlements
 create policy "settlements_insert" on public.settlements
   for insert to authenticated
   with check (public.is_member(group_id) and created_by = auth.uid());
+create policy "settlements_update" on public.settlements
+  for update to authenticated using (public.is_member(group_id))
+  with check (public.is_member(group_id));
 create policy "settlements_delete" on public.settlements
   for delete to authenticated using (public.is_member(group_id));
 
@@ -232,7 +239,8 @@ create or replace function public.add_expense(
   payer uuid,
   edate date,
   stype text,
-  splits jsonb  -- e.g. [{"user_id":"...","amount":120.50}, ...]
+  splits jsonb,  -- e.g. [{"user_id":"...","amount":120.50}, ...]
+  cat text default null
 )
 returns uuid
 language plpgsql
@@ -261,9 +269,9 @@ begin
   end if;
 
   insert into public.expenses
-    (group_id, description, amount, paid_by, split_type, expense_date, created_by)
+    (group_id, description, amount, paid_by, split_type, category, expense_date, created_by)
   values
-    (gid, trim(descr), round(total, 2), payer, stype, edate, auth.uid())
+    (gid, trim(descr), round(total, 2), payer, stype, nullif(trim(cat), ''), edate, auth.uid())
   returning id into eid;
 
   insert into public.expense_splits (expense_id, user_id, amount)
@@ -275,12 +283,65 @@ begin
 end;
 $$;
 
-grant execute on function public.create_group(text) to authenticated;
-grant execute on function public.join_group(text) to authenticated;
 grant execute on function public.add_expense(uuid, text, numeric, uuid, date, text, jsonb) to authenticated;
+grant execute on function public.add_expense(uuid, text, numeric, uuid, date, text, jsonb, text) to authenticated;
+
+-- ---------- RPC: update an expense with its splits ----------
+
+create or replace function public.update_expense(
+  eid uuid,
+  descr text,
+  total numeric,
+  payer uuid,
+  edate date,
+  stype text,
+  cat text,
+  splits jsonb
+)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  gid uuid;
+  split_sum numeric;
+begin
+  select group_id into gid from public.expenses where id = eid;
+  if gid is null then raise exception 'Expense not found'; end if;
+  if not public.is_member(gid) then
+    raise exception 'You are not a member of this group';
+  end if;
+
+  select coalesce(sum((s ->> 'amount')::numeric), 0)
+  into split_sum
+  from jsonb_array_elements(splits) s;
+
+  if abs(split_sum - total) > 0.02 then
+    raise exception 'Split amounts (%.2f) do not add up to the total (%.2f)', split_sum, total;
+  end if;
+
+  update public.expenses set
+    description = trim(descr),
+    amount = round(total, 2),
+    paid_by = payer,
+    split_type = stype,
+    category = nullif(trim(cat), ''),
+    expense_date = edate
+  where id = eid;
+
+  delete from public.expense_splits where expense_id = eid;
+  insert into public.expense_splits (expense_id, user_id, amount)
+  select eid, (s ->> 'user_id')::uuid, round((s ->> 'amount')::numeric, 2)
+  from jsonb_array_elements(splits) s
+  where (s ->> 'amount')::numeric > 0;
+end;
+$$;
+
+grant execute on function public.update_expense(uuid, text, numeric, uuid, date, text, text, jsonb) to authenticated;
 
 -- ---------- REALTIME (live sync across devices) ----------
 
 alter publication supabase_realtime add table public.expenses;
+alter publication supabase_realtime add table public.expense_splits;
 alter publication supabase_realtime add table public.settlements;
 alter publication supabase_realtime add table public.group_members;
