@@ -14,6 +14,7 @@ export default function App() {
   const [groups, setGroups] = useState([])
   const [activeGroupId, setActiveGroupId] = useState(null)
   const [members, setMembers] = useState([])
+  const [allMembers, setAllMembers] = useState([])
   const [expenses, setExpenses] = useState([])
   const [settlements, setSettlements] = useState([])
   const [tab, setTab] = useState('balances')
@@ -58,7 +59,7 @@ export default function App() {
     if (!session?.user) return
     const [{ data: prof }, { data: memberships }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', session.user.id).single(),
-      supabase.from('group_members').select('group:groups(*)').eq('user_id', session.user.id),
+      supabase.from('group_members').select('group:groups(*)').eq('user_id', session.user.id).is('left_at', null),
     ])
     setProfile(prof)
     const gs = (memberships || []).map((m) => m.group).filter(Boolean)
@@ -80,7 +81,7 @@ export default function App() {
     const [{ data: mems }, { data: exps }, { data: setts }] = await Promise.all([
       supabase
         .from('group_members')
-        .select('user_id, profile:profiles(id, full_name, email)')
+        .select('user_id, left_at, profile:profiles(id, full_name, email)')
         .eq('group_id', activeGroupId),
       supabase
         .from('expenses')
@@ -94,7 +95,9 @@ export default function App() {
         .eq('group_id', activeGroupId)
         .order('created_at', { ascending: false }),
     ])
-    setMembers((mems || []).map((m) => m.profile).filter(Boolean))
+    const memProfiles = (mems || []).map((m) => ({ ...m.profile, left_at: m.left_at })).filter(Boolean)
+    setAllMembers(memProfiles)
+    setMembers(memProfiles.filter((m) => !m.left_at))
     setExpenses(exps || [])
     setSettlements(setts || [])
   }, [activeGroupId])
@@ -212,7 +215,7 @@ export default function App() {
         {tab === 'balances' && (
           <Balances
             me={profile}
-            members={members}
+            members={allMembers}
             expenses={expenses}
             settlements={settlements}
             currency={group.currency}
@@ -222,7 +225,7 @@ export default function App() {
         {tab === 'activity' && (
           <Activity
             me={profile}
-            members={members}
+            members={allMembers}
             expenses={expenses}
             settlements={settlements}
             currency={group.currency}

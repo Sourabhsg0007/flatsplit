@@ -3,6 +3,7 @@ import { computeNetBalances, computeTotalSpent, computeTotalGroupExpenses, simpl
 
 export default function Balances({ me, members, expenses, settlements, currency, onGoSettle }) {
   const [expandedSpender, setExpandedSpender] = useState(null)
+  const activeMembers = members.filter((m) => !m.left_at)
   const memberIds = members.map((m) => m.id)
   const net = computeNetBalances(memberIds, expenses, settlements)
   const totals = computeTotalSpent(memberIds, expenses)
@@ -10,7 +11,9 @@ export default function Balances({ me, members, expenses, settlements, currency,
   const transfers = simplifyDebts(net)
   const myNet = net[me.id] ?? 0
   const nameOf = (id) => members.find((m) => m.id === id)?.full_name || 'Someone'
-  const allSettled = transfers.length === 0
+  const activeIds = new Set(activeMembers.map((m) => m.id))
+  const activeTransfers = transfers.filter((t) => activeIds.has(t.from) && activeIds.has(t.to))
+  const allSettled = activeTransfers.length === 0
 
   return (
     <div className="page">
@@ -34,7 +37,7 @@ export default function Balances({ me, members, expenses, settlements, currency,
       <section className="card">
         <h2 className="card-title">Spent by each person</h2>
         <ul className="ledger">
-          {members.map((m) => {
+          {activeMembers.map((m) => {
             const spent = totals[m.id] ?? 0
             const share = totalExpenses > 0 ? ((spent / totalExpenses) * 100).toFixed(0) : 0
             const paidExpenses = expenses
@@ -86,7 +89,7 @@ export default function Balances({ me, members, expenses, settlements, currency,
       <section className="card">
         <h2 className="card-title">Net balances</h2>
         <ul className="ledger">
-          {members.map((m) => {
+          {activeMembers.map((m) => {
             const v = net[m.id] ?? 0
             return (
               <li key={m.id} className="ledger-row">
@@ -109,7 +112,7 @@ export default function Balances({ me, members, expenses, settlements, currency,
           <p className="empty">Nothing pending &mdash; the flat is all square.</p>
         ) : (
           <ul className="transfer-list">
-            {transfers.map((t, i) => (
+            {activeTransfers.map((t, i) => (
               <li key={i} className="transfer-row">
                 <span className="transfer-text">
                   <strong>{t.from === me.id ? 'You' : nameOf(t.from)}</strong>
