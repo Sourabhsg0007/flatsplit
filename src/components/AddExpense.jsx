@@ -9,15 +9,34 @@ const SPLIT_TYPES = [
   { key: 'shares', label: 'Shares' },
 ]
 
-export default function AddExpense({ group, me, members, onSaved, onCancel }) {
-  const [description, setDescription] = useState('')
-  const [amount, setAmount] = useState('')
-  const [paidBy, setPaidBy] = useState(me.id)
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [splitType, setSplitType] = useState('equal')
-  const [rows, setRows] = useState(() =>
-    members.map((m) => ({ user_id: m.id, included: true, value: '' }))
+const CATEGORIES = [
+  'Food & Groceries', 'Rent', 'Utilities', 'Transportation',
+  'Entertainment', 'Shopping', 'Health', 'Other',
+]
+
+export default function AddExpense({ group, me, members, onSaved, onCancel, expenseToEdit }) {
+  const isEdit = !!expenseToEdit
+  const defaultRows = () =>
+    members.map((m) => {
+      const existing = isEdit
+        ? expenseToEdit.splits?.find((s) => s.user_id === m.id)
+        : null
+      return {
+        user_id: m.id,
+        included: isEdit ? !!existing : true,
+        value: existing ? String(existing.amount) : '',
+      }
+    })
+
+  const [description, setDescription] = useState(isEdit ? expenseToEdit.description : '')
+  const [amount, setAmount] = useState(isEdit ? String(expenseToEdit.amount) : '')
+  const [paidBy, setPaidBy] = useState(isEdit ? expenseToEdit.paid_by : me.id)
+  const [date, setDate] = useState(
+    isEdit ? expenseToEdit.expense_date : new Date().toISOString().slice(0, 10)
   )
+  const [splitType, setSplitType] = useState(isEdit ? expenseToEdit.split_type : 'equal')
+  const [category, setCategory] = useState(isEdit ? (expenseToEdit.category || '') : '')
+  const [rows, setRows] = useState(defaultRows)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
@@ -49,7 +68,7 @@ export default function AddExpense({ group, me, members, onSaved, onCancel }) {
     if (!preview || preview.error) { setError(preview?.error || 'Check the split values.'); return }
 
     setBusy(true)
-    const { error: err } = await supabase.rpc('add_expense', {
+    const payload = {
       gid: group.id,
       descr: description.trim(),
       total,
@@ -57,7 +76,28 @@ export default function AddExpense({ group, me, members, onSaved, onCancel }) {
       edate: date,
       stype: splitType,
       splits: preview.splits,
-    })
+    }
+
+    let err = null
+    if (isEdit) {
+      const { error: e } = await supabase.rpc('update_expense', {
+        eid: expenseToEdit.id,
+        descr: description.trim(),
+        total,
+        payer: paidBy,
+        edate: date,
+        stype: splitType,
+        cat: category,
+        splits: preview.splits,
+      })
+      err = e
+    } else {
+      const { error: e } = await supabase.rpc('add_expense', {
+        ...payload,
+        cat: category || null,
+      })
+      err = e
+    }
     setBusy(false)
     if (err) { setError(err.message); return }
     onSaved()
@@ -69,7 +109,7 @@ export default function AddExpense({ group, me, members, onSaved, onCancel }) {
   return (
     <div className="page">
       <section className="card">
-        <h2 className="card-title">Add an expense</h2>
+        <h2 className="card-title">{isEdit ? 'Edit expense' : 'Add an expense'}</h2>
 
         <label className="field">
           <span>Description</span>
@@ -99,6 +139,16 @@ export default function AddExpense({ group, me, members, onSaved, onCancel }) {
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
         </div>
+
+        <label className="field">
+          <span>Category</span>
+          <select value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="">None</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </label>
 
         <label className="field">
           <span>Paid by</span>
@@ -169,7 +219,7 @@ export default function AddExpense({ group, me, members, onSaved, onCancel }) {
         <div className="field-row">
           <button className="btn ghost block" onClick={onCancel}>Cancel</button>
           <button className="btn primary block" onClick={save} disabled={busy}>
-            {busy ? 'Saving…' : 'Save expense'}
+            {busy ? 'Saving...' : isEdit ? 'Update expense' : 'Save expense'}
           </button>
         </div>
       </section>

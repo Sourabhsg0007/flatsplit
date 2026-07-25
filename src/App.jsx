@@ -9,16 +9,27 @@ import Settle from './components/Settle'
 import GroupInfo from './components/GroupInfo'
 
 export default function App() {
-  const [session, setSession] = useState(undefined) // undefined = loading
+  const [session, setSession] = useState(undefined)
   const [profile, setProfile] = useState(null)
   const [groups, setGroups] = useState([])
   const [activeGroupId, setActiveGroupId] = useState(null)
   const [members, setMembers] = useState([])
   const [expenses, setExpenses] = useState([])
   const [settlements, setSettlements] = useState([])
-  const [tab, setTab] = useState('balances') // balances | activity | add | settle | group
+  const [tab, setTab] = useState('balances')
   const [showSetup, setShowSetup] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [expenseToEdit, setExpenseToEdit] = useState(null)
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches
+    }
+    return false
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
 
   // --- auth session ---
   useEffect(() => {
@@ -108,15 +119,31 @@ export default function App() {
     return () => window.removeEventListener('focus', onFocus)
   }, [loadGroupData])
 
+  function handleEditExpense(expense) {
+    setExpenseToEdit(expense)
+    setTab('add')
+  }
+
+  function handleExpenseSaved() {
+    setExpenseToEdit(null)
+    loadGroupData()
+    setTab('balances')
+  }
+
+  function handleExpenseCancelled() {
+    setExpenseToEdit(null)
+    setTab('balances')
+  }
+
   // --- render states ---
   if (session === undefined || (session && loading)) {
-    return <div className="splash"><span className="brand-mark big">÷</span></div>
+    return <div className="splash"><span className="brand-mark big">{'÷'}</span></div>
   }
 
   if (!session) return <Auth />
 
   if (!profile) {
-    return <div className="splash"><span className="brand-mark big">÷</span></div>
+    return <div className="splash"><span className="brand-mark big">{'÷'}</span></div>
   }
 
   if (groups.length === 0 || showSetup) {
@@ -140,6 +167,13 @@ export default function App() {
       <header className="topbar">
         <span className="topbar-brand">÷</span>
         <span className="topbar-title">{group.name}</span>
+        <button
+          className="dark-toggle"
+          onClick={() => setDarkMode((d) => !d)}
+          title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {darkMode ? '\u2600' : '\u263E'}
+        </button>
       </header>
 
       <main className="content">
@@ -161,6 +195,7 @@ export default function App() {
             settlements={settlements}
             currency={group.currency}
             onChanged={loadGroupData}
+            onEditExpense={handleEditExpense}
           />
         )}
         {tab === 'add' && (
@@ -168,8 +203,9 @@ export default function App() {
             group={group}
             me={profile}
             members={members}
-            onSaved={() => { loadGroupData(); setTab('balances') }}
-            onCancel={() => setTab('balances')}
+            onSaved={handleExpenseSaved}
+            onCancel={handleExpenseCancelled}
+            expenseToEdit={expenseToEdit}
           />
         )}
         {tab === 'settle' && (
@@ -190,6 +226,7 @@ export default function App() {
             groups={groups}
             onSwitchGroup={(gid) => { setActiveGroupId(gid); setTab('balances') }}
             onNewGroup={() => setShowSetup(true)}
+            onGroupUpdated={loadProfileAndGroups}
           />
         )}
       </main>
@@ -201,7 +238,7 @@ export default function App() {
         <button className={tab === 'activity' ? 'tab active' : 'tab'} onClick={() => setTab('activity')}>
           <span className="tab-icon">≡</span>Activity
         </button>
-        <button className="tab add-btn" onClick={() => setTab('add')} aria-label="Add expense">
+        <button className="tab add-btn" onClick={() => { setExpenseToEdit(null); setTab('add') }} aria-label="Add expense">
           +
         </button>
         <button className={tab === 'settle' ? 'tab active' : 'tab'} onClick={() => setTab('settle')}>

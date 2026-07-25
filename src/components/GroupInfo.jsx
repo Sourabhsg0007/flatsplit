@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 
-export default function GroupInfo({ group, me, members, groups, onSwitchGroup, onNewGroup }) {
+export default function GroupInfo({ group, me, members, groups, onSwitchGroup, onNewGroup, onGroupUpdated }) {
   const [copied, setCopied] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [newName, setNewName] = useState(group.name)
+  const [busy, setBusy] = useState(false)
 
   async function copyCode() {
     try {
@@ -14,12 +17,25 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
     }
   }
 
+  async function saveName() {
+    if (!newName.trim()) return
+    setBusy(true)
+    const { error } = await supabase
+      .from('groups')
+      .update({ name: newName.trim() })
+      .eq('id', group.id)
+    setBusy(false)
+    if (error) { window.alert(error.message); return }
+    setEditingName(false)
+    if (onGroupUpdated) onGroupUpdated()
+  }
+
   return (
     <div className="page">
       <section className="card">
         <h2 className="card-title">Invite flatmates</h2>
         <p className="hint">
-          Ask them to sign up, choose “Join with code”, and enter this code:
+          Ask them to sign up, choose &ldquo;Join with code&rdquo;, and enter this code:
         </p>
         <div className="invite-code" onClick={copyCode} role="button" tabIndex={0}>
           <span className="code">{group.invite_code}</span>
@@ -28,7 +44,36 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
       </section>
 
       <section className="card">
-        <h2 className="card-title">Members · {group.name}</h2>
+        <h2 className="card-title">Group</h2>
+        {editingName ? (
+          <div className="field-row">
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="field-input"
+              onKeyDown={(e) => e.key === 'Enter' && saveName()}
+              autoFocus
+            />
+            <button className="btn small" onClick={saveName} disabled={busy}>
+              Save
+            </button>
+            <button className="btn small" onClick={() => { setEditingName(false); setNewName(group.name) }}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div className="group-name-row">
+            <span className="group-name-text">{group.name}</span>
+            <button className="btn small" onClick={() => { setEditingName(true); setNewName(group.name) }}>
+              Edit
+            </button>
+          </div>
+        )}
+      </section>
+
+      <section className="card">
+        <h2 className="card-title">Members</h2>
         <ul className="ledger">
           {members.map((m) => (
             <li key={m.id} className="ledger-row">

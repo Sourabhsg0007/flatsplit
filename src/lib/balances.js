@@ -112,6 +112,20 @@ function allocateProportionally(totalCents, entries, weightFn) {
   return entries.map((e, idx) => ({ user_id: e.user_id, amount: floors[idx] / 100 }))
 }
 
+export function computeTotalSpent(memberIds, expenses) {
+  const total = {}
+  memberIds.forEach((id) => (total[id] = 0))
+  for (const e of expenses) {
+    if (total[e.paid_by] !== undefined) total[e.paid_by] += Number(e.amount)
+  }
+  for (const id of Object.keys(total)) total[id] = round2(total[id])
+  return total
+}
+
+export function computeTotalGroupExpenses(expenses) {
+  return expenses.reduce((sum, e) => sum + Number(e.amount), 0)
+}
+
 export function round2(n) {
   return Math.round(n * 100) / 100
 }
