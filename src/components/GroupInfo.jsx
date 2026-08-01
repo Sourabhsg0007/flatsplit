@@ -1,16 +1,31 @@
 import { useState } from 'react'
+import { Check, Copy, Pencil } from 'lucide-react'
 import { supabase } from '../supabaseClient'
+import ConfirmDialog from './ConfirmDialog'
+import { useToast } from './Toast'
+
+const CURRENCIES = [
+  { value: '₹', label: 'INR (₹)' },
+  { value: '$', label: 'USD ($)' },
+  { value: '€', label: 'EUR (€)' },
+  { value: '£', label: 'GBP (£)' },
+  { value: '¥', label: 'JPY (¥)' },
+  { value: 'AED', label: 'AED' },
+]
 
 const otherMembers = (members, meId) => members.filter((m) => m.id !== meId)
 
-export default function GroupInfo({ group, me, members, groups, onSwitchGroup, onNewGroup, onGroupUpdated }) {
+export default function GroupInfo({ group, me, members, groups, onSwitchGroup, onGroupUpdated }) {
   const [copied, setCopied] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [newName, setNewName] = useState(group.name)
+  const [currency, setCurrency] = useState(group.currency)
   const [busy, setBusy] = useState(false)
+  const toast = useToast()
   const [showLeaveOptions, setShowLeaveOptions] = useState(false)
   const [leaveMode, setLeaveMode] = useState(null)
   const [newAdminId, setNewAdminId] = useState('')
+  const [confirmTarget, setConfirmTarget] = useState(null)
 
   const isAdmin = group.created_by === me.id
   const others = otherMembers(members, me.id)
@@ -20,6 +35,7 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
     try {
       await navigator.clipboard.writeText(inviteLink)
       setCopied(true)
+      toast('success', 'Invite link copied.')
       setTimeout(() => setCopied(false), 1500)
     } catch {
       window.prompt('Copy this invite link:', inviteLink)
@@ -34,45 +50,87 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
       .update({ name: newName.trim() })
       .eq('id', group.id)
     setBusy(false)
-    if (error) { window.alert(error.message); return }
+    if (error) { toast('error', error.message); return }
     setEditingName(false)
+    toast('success', 'Group name updated.')
     if (onGroupUpdated) onGroupUpdated()
   }
 
-  async function handleRemoveMember(userId) {
-    if (!window.confirm('Remove this member from the group? Their expense history stays.')) return
-    setBusy(true)
-    const { error } = await supabase.rpc('remove_member', { gid: group.id, target_user_id: userId })
-    setBusy(false)
-    if (error) { window.alert(error.message); return }
+  async function saveCurrency(next) {
+    if (next === group.currency) return
+    setCurrency(next)
+    const { error } = await supabase
+      .from('groups')
+      .update({ currency: next })
+      .eq('id', group.id)
+    if (error) {
+      setCurrency(group.currency)
+      toast('error', error.message)
+      return
+    }
+    toast('success', `Currency set to ${next}.`)
     if (onGroupUpdated) onGroupUpdated()
   }
 
-  async function handleLeave() {
-    if (!window.confirm('Leave this group? Your expense history stays visible to others.')) return
-    setBusy(true)
-    const { error } = await supabase.rpc('leave_group', { gid: group.id })
-    setBusy(false)
-    if (error) { window.alert(error.message); return }
-    if (onGroupUpdated) onGroupUpdated()
+  function handleRemoveMember(userId) {
+    setConfirmTarget({
+      title: 'Remove this member?',
+      body: 'Their expense history stays in the group.',
+      confirmLabel: 'Remove',
+      action: 'remove',
+      userId,
+    })
   }
 
-  async function handleTransferAndLeave() {
+  function handleLeave() {
+    setConfirmTarget({
+      title: 'Leave this group?',
+      body: 'Your expense history stays visible to others.',
+      confirmLabel: 'Leave',
+      action: 'leave',
+    })
+  }
+
+  function handleTransferAndLeave() {
     if (!newAdminId) return
-    if (!window.confirm('Transfer ownership and leave? The new owner will take over.')) return
-    setBusy(true)
-    const { error } = await supabase.rpc('transfer_and_leave', { gid: group.id, new_owner_id: newAdminId })
-    setBusy(false)
-    if (error) { window.alert(error.message); return }
-    if (onGroupUpdated) onGroupUpdated()
+    setConfirmTarget({
+      title: 'Transfer ownership and leave?',
+      body: 'The new owner will take over this group.',
+      confirmLabel: 'Transfer & leave',
+      action: 'transfer',
+    })
   }
 
-  async function handleDeleteGroup() {
-    if (!window.confirm('Delete this group for everyone? All data stays on record but is hidden.')) return
+  function handleDeleteGroup() {
+    setConfirmTarget({
+      title: 'Delete this group for everyone?',
+      body: 'All data stays on record but is hidden.',
+      confirmLabel: 'Delete group',
+      action: 'delete',
+    })
+  }
+
+  async function runConfirm() {
+    if (!confirmTarget) return
     setBusy(true)
-    const { error } = await supabase.rpc('delete_group', { gid: group.id })
+    const { action } = confirmTarget
+    let error = null
+    if (action === 'remove') {
+      ;({ error } = await supabase.rpc('remove_member', { gid: group.id, target_user_id: confirmTarget.userId }))
+    } else if (action === 'leave') {
+      ;({ error } = await supabase.rpc('leave_group', { gid: group.id }))
+    } else if (action === 'transfer') {
+      ;({ error } = await supabase.rpc('transfer_and_leave', { gid: group.id, new_owner_id: newAdminId }))
+    } else if (action === 'delete') {
+      ;({ error } = await supabase.rpc('delete_group', { gid: group.id }))
+    }
     setBusy(false)
-    if (error) { window.alert(error.message); return }
+    setConfirmTarget(null)
+    if (error) {
+      toast('error', error.message)
+      return
+    }
+    toast('success', action === 'delete' ? 'Group deleted.' : 'Done.')
     if (onGroupUpdated) onGroupUpdated()
   }
 
@@ -168,7 +226,7 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
         <p className="hint">Share this link &mdash; they&rsquo;ll join automatically after signing in:</p>
         <div className="invite-code" onClick={copyLink} role="button" tabIndex={0}>
           <span className="code" style={{ fontSize: '0.9rem', letterSpacing: '0.05em' }}>{inviteLink}</span>
-          <span className="copy-hint">{copied ? 'Copied!' : 'Tap to copy link'}</span>
+          <span className="copy-hint">{copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied!' : 'Tap to copy link'}</span>
         </div>
         <p className="hint" style={{ textAlign: 'center' }}>
           Or share the code: <strong>{group.invite_code}</strong>
@@ -199,11 +257,20 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
             <span className="group-name-text">{group.name}</span>
             {isAdmin && (
               <button className="btn small" onClick={() => { setEditingName(true); setNewName(group.name) }}>
-                Edit
+                <Pencil size={12} /> Edit
               </button>
             )}
           </div>
         )}
+
+        <label className="field" style={{ marginTop: 12 }}>
+          <span>Currency</span>
+          <select value={currency} onChange={(e) => saveCurrency(e.target.value)}>
+            {CURRENCIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </label>
       </section>
 
       <section className="card">
@@ -255,6 +322,16 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
           Sign out
         </button>
       </section>
+
+      {confirmTarget && (
+        <ConfirmDialog
+          title={confirmTarget.title}
+          body={confirmTarget.body}
+          confirmLabel={busy ? 'Working…' : confirmTarget.confirmLabel}
+          onConfirm={runConfirm}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
     </div>
   )
 }

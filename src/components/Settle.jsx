@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { computeNetBalances, simplifyDebts, fmtMoney } from '../lib/balances'
+import { useToast } from './Toast'
 
 export default function Settle({ group, me, members, expenses, settlements, onSaved }) {
   const memberIds = members.map((m) => m.id)
   const net = computeNetBalances(memberIds, expenses, settlements)
   const suggestions = simplifyDebts(net)
   const nameOf = (id) => members.find((m) => m.id === id)?.full_name || 'Someone'
+  const toast = useToast()
 
   const others = members.filter((m) => m.id !== me.id)
   const [fromUser, setFromUser] = useState(me.id)
@@ -16,7 +18,7 @@ export default function Settle({ group, me, members, expenses, settlements, onSa
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
-  function useSuggestion(t) {
+  function applySuggestion(t) {
     setFromUser(t.from)
     setToUser(t.to)
     setAmount(String(t.amount))
@@ -43,6 +45,7 @@ export default function Settle({ group, me, members, expenses, settlements, onSa
     if (err) { setError(err.message); return }
     setAmount('')
     setNote('')
+    toast('success', 'Payment recorded.')
     onSaved()
   }
 
@@ -60,7 +63,7 @@ export default function Settle({ group, me, members, expenses, settlements, onSa
                   <strong>{t.to === me.id ? 'you' : nameOf(t.to)}</strong>
                 </span>
                 <span className="money">{fmtMoney(t.amount, group.currency)}</span>
-                <button className="btn small" onClick={() => useSuggestion(t)}>Use</button>
+                <button className="btn small" onClick={() => applySuggestion(t)}>Use</button>
               </li>
             ))}
           </ul>

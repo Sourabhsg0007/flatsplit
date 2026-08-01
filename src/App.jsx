@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
+import { ArrowLeftRight, BarChart3, Home, List, Moon, Plus, Settings, Sun } from 'lucide-react'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth'
 import GroupSetup from './components/GroupSetup'
 import Balances from './components/Balances'
 import AddExpense from './components/AddExpense'
 import Activity from './components/Activity'
+import Insights from './components/Insights'
 import Settle from './components/Settle'
 import GroupInfo from './components/GroupInfo'
+import { useToast } from './components/Toast'
 
 export default function App() {
   const [session, setSession] = useState(undefined)
@@ -21,12 +24,14 @@ export default function App() {
   const [showSetup, setShowSetup] = useState(false)
   const [loading, setLoading] = useState(true)
   const [expenseToEdit, setExpenseToEdit] = useState(null)
+  const [repeatOf, setRepeatOf] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.matchMedia('(prefers-color-scheme: dark)').matches
     }
     return false
   })
+  const toast = useToast()
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
@@ -37,7 +42,7 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const tabParam = params.get('tab')
-    if (tabParam && ['balances', 'activity', 'add', 'settle', 'group'].includes(tabParam)) {
+    if (tabParam && ['balances', 'activity', 'insights', 'add', 'settle', 'group'].includes(tabParam)) {
       setTab(tabParam)
     }
     const joinCode = params.get('join')
@@ -138,14 +143,14 @@ export default function App() {
     ;(async () => {
       const { data, error } = await supabase.rpc('join_group', { code })
       if (error) {
-        alert(error.message.includes('Invalid') ? 'That invite link is invalid.' : error.message)
+        toast('error', error.message.includes('Invalid') ? 'That invite link is invalid.' : error.message)
         return
       }
       await loadProfileAndGroups()
       if (data) setActiveGroupId(data)
       setTab('balances')
     })()
-  }, [session, loading, loadProfileAndGroups])
+  }, [session, loading, loadProfileAndGroups, toast])
 
   // Refetch when the tab regains focus (belt and braces for mobile).
   useEffect(() => {
@@ -155,30 +160,45 @@ export default function App() {
   }, [loadGroupData])
 
   function handleEditExpense(expense) {
+    setRepeatOf(null)
     setExpenseToEdit(expense)
+    setTab('add')
+  }
+
+  function handleRepeatExpense(expense) {
+    setExpenseToEdit(null)
+    setRepeatOf(expense)
     setTab('add')
   }
 
   function handleExpenseSaved() {
     setExpenseToEdit(null)
+    setRepeatOf(null)
     loadGroupData()
     setTab('balances')
   }
 
   function handleExpenseCancelled() {
     setExpenseToEdit(null)
+    setRepeatOf(null)
     setTab('balances')
+  }
+
+  function openAdd() {
+    setExpenseToEdit(null)
+    setRepeatOf(null)
+    setTab('add')
   }
 
   // --- render states ---
   if (session === undefined || (session && loading)) {
-    return <div className="splash"><span className="brand-mark big">{'÷'}</span></div>
+    return <SkeletonScreen />
   }
 
   if (!session) return <Auth />
 
   if (!profile) {
-    return <div className="splash"><span className="brand-mark big">{'÷'}</span></div>
+    return <SkeletonScreen />
   }
 
   if (groups.length === 0 || showSetup) {
@@ -203,11 +223,20 @@ export default function App() {
         <span className="topbar-brand">÷</span>
         <span className="topbar-title">{group.name}</span>
         <button
-          className="dark-toggle"
+          className="topbar-icon"
+          onClick={() => setTab('group')}
+          title="Group settings"
+          aria-label="Group settings"
+        >
+          <Settings size={18} />
+        </button>
+        <button
+          className="topbar-icon"
           onClick={() => setDarkMode((d) => !d)}
           title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
         >
-          {darkMode ? '\u2600' : '\u263E'}
+          {darkMode ? <Sun size={18} /> : <Moon size={18} />}
         </button>
       </header>
 
@@ -220,6 +249,7 @@ export default function App() {
             settlements={settlements}
             currency={group.currency}
             onGoSettle={() => setTab('settle')}
+            onAddExpense={openAdd}
           />
         )}
         {tab === 'activity' && (
@@ -231,6 +261,16 @@ export default function App() {
             currency={group.currency}
             onChanged={loadGroupData}
             onEditExpense={handleEditExpense}
+            onRepeatExpense={handleRepeatExpense}
+          />
+        )}
+        {tab === 'insights' && (
+          <Insights
+            me={profile}
+            members={members}
+            expenses={expenses}
+            settlements={settlements}
+            currency={group.currency}
           />
         )}
         {tab === 'add' && (
@@ -241,6 +281,7 @@ export default function App() {
             onSaved={handleExpenseSaved}
             onCancel={handleExpenseCancelled}
             expenseToEdit={expenseToEdit}
+            repeatOf={repeatOf}
           />
         )}
         {tab === 'settle' && (
@@ -260,7 +301,6 @@ export default function App() {
             members={members}
             groups={groups}
             onSwitchGroup={(gid) => { setActiveGroupId(gid); setTab('balances') }}
-            onNewGroup={() => setShowSetup(true)}
             onGroupUpdated={loadProfileAndGroups}
           />
         )}
@@ -268,21 +308,49 @@ export default function App() {
 
       <nav className="tabbar">
         <button className={tab === 'balances' ? 'tab active' : 'tab'} onClick={() => setTab('balances')}>
-          <span className="tab-icon">⌂</span>Balances
+          <span className="tab-icon"><Home size={20} /></span>Balances
         </button>
         <button className={tab === 'activity' ? 'tab active' : 'tab'} onClick={() => setTab('activity')}>
-          <span className="tab-icon">≡</span>Activity
+          <span className="tab-icon"><List size={20} /></span>Activity
         </button>
-        <button className="tab add-btn" onClick={() => { setExpenseToEdit(null); setTab('add') }} aria-label="Add expense">
-          +
+        <button className="tab add-btn" onClick={openAdd} aria-label="Add expense">
+          <Plus size={26} />
+        </button>
+        <button className={tab === 'insights' ? 'tab active' : 'tab'} onClick={() => setTab('insights')}>
+          <span className="tab-icon"><BarChart3 size={20} /></span>Insights
         </button>
         <button className={tab === 'settle' ? 'tab active' : 'tab'} onClick={() => setTab('settle')}>
-          <span className="tab-icon">⇄</span>Settle
-        </button>
-        <button className={tab === 'group' ? 'tab active' : 'tab'} onClick={() => setTab('group')}>
-          <span className="tab-icon">⌘</span>Group
+          <span className="tab-icon"><ArrowLeftRight size={20} /></span>Settle
         </button>
       </nav>
+    </div>
+  )
+}
+
+function SkeletonScreen() {
+  return (
+    <div className="app">
+      <header className="topbar">
+        <span className="topbar-brand">÷</span>
+        <span className="topbar-title">
+          <span className="skeleton-text" style={{ width: '120px' }} />
+        </span>
+      </header>
+      <main className="content">
+        <div className="page">
+          <div className="hero-balance skeleton-block" />
+          <div className="card">
+            <div className="skeleton-text" style={{ width: '60%' }} />
+            <div className="skeleton-text" style={{ width: '80%' }} />
+          </div>
+          <div className="card">
+            <div className="skeleton-text" style={{ width: '50%' }} />
+            <div className="skeleton-line" />
+            <div className="skeleton-line" />
+            <div className="skeleton-line" />
+          </div>
+        </div>
+      </main>
     </div>
   )
 }

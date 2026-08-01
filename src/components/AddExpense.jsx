@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { computeSplits, fmtMoney } from '../lib/balances'
+import { useToast } from './Toast'
 
 const SPLIT_TYPES = [
   { key: 'equal', label: 'Equally' },
@@ -14,28 +15,32 @@ const CATEGORIES = [
   'Entertainment', 'Shopping', 'Health', 'Other',
 ]
 
-export default function AddExpense({ group, me, members, onSaved, onCancel, expenseToEdit }) {
+export default function AddExpense({ group, me, members, onSaved, onCancel, expenseToEdit, repeatOf }) {
   const isEdit = !!expenseToEdit
+  const isRepeat = !!repeatOf
+  const source = isEdit ? expenseToEdit : repeatOf
+  const toast = useToast()
+
   const defaultRows = () =>
     members.map((m) => {
-      const existing = isEdit
-        ? expenseToEdit.splits?.find((s) => s.user_id === m.id)
-        : null
+      const existing = source?.splits?.find((s) => s.user_id === m.id)
       return {
         user_id: m.id,
-        included: isEdit ? !!existing : true,
+        included: source ? !!existing : true,
         value: existing ? String(existing.amount) : '',
       }
     })
 
-  const [description, setDescription] = useState(isEdit ? expenseToEdit.description : '')
-  const [amount, setAmount] = useState(isEdit ? String(expenseToEdit.amount) : '')
-  const [paidBy, setPaidBy] = useState(isEdit ? expenseToEdit.paid_by : me.id)
+  const [description, setDescription] = useState(source ? source.description : '')
+  const [amount, setAmount] = useState(source ? String(source.amount) : '')
+  const [paidBy, setPaidBy] = useState(source ? source.paid_by : me.id)
   const [date, setDate] = useState(
-    isEdit ? expenseToEdit.expense_date : new Date().toISOString().slice(0, 10)
+    source ? (isRepeat ? new Date().toISOString().slice(0, 10) : source.expense_date) : new Date().toISOString().slice(0, 10)
   )
-  const [splitType, setSplitType] = useState(isEdit ? expenseToEdit.split_type : 'equal')
-  const [category, setCategory] = useState(isEdit ? (expenseToEdit.category || 'Food & Groceries') : 'Food & Groceries')
+  const [splitType, setSplitType] = useState(source ? source.split_type : 'equal')
+  const [category, setCategory] = useState(
+    source ? (source.category || 'Food & Groceries') : 'Food & Groceries'
+  )
   const [rows, setRows] = useState(defaultRows)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -101,6 +106,7 @@ export default function AddExpense({ group, me, members, onSaved, onCancel, expe
     }
     setBusy(false)
     if (err) { setError(err.message); return }
+    toast('success', isEdit ? 'Expense updated.' : 'Expense added.')
     onSaved()
   }
 
@@ -110,7 +116,9 @@ export default function AddExpense({ group, me, members, onSaved, onCancel, expe
   return (
     <div className="page">
       <section className="card">
-        <h2 className="card-title">{isEdit ? 'Edit expense' : 'Add an expense'}</h2>
+        <h2 className="card-title">
+          {isEdit ? 'Edit expense' : isRepeat ? 'Repeat expense' : 'Add an expense'}
+        </h2>
 
         <label className="field">
           <span>Description</span>
@@ -219,7 +227,7 @@ export default function AddExpense({ group, me, members, onSaved, onCancel, expe
         <div className="field-row">
           <button className="btn ghost block" onClick={onCancel}>Cancel</button>
           <button className="btn primary block" onClick={save} disabled={busy}>
-            {busy ? 'Saving...' : isEdit ? 'Update expense' : 'Save expense'}
+            {busy ? 'Saving...' : isEdit ? 'Update expense' : isRepeat ? 'Save as new' : 'Save expense'}
           </button>
         </div>
       </section>
