@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { computeNetBalances, computeTotalSpent, computeTotalGroupExpenses, simplifyDebts, fmtMoney } from '../lib/balances'
 
-export default function Balances({ me, members, expenses, settlements, currency, onGoSettle }) {
+export default function Balances({ me, members, expenses, settlements, currency, onGoSettle, onAddExpense }) {
   const [expandedSpender, setExpandedSpender] = useState(null)
   const memberIds = members.map((m) => m.id)
   const net = computeNetBalances(memberIds, expenses, settlements)
@@ -11,6 +11,27 @@ export default function Balances({ me, members, expenses, settlements, currency,
   const myNet = net[me.id] ?? 0
   const nameOf = (id) => members.find((m) => m.id === id)?.full_name || 'Someone'
   const allSettled = transfers.length === 0
+
+  if (expenses.length === 0 && settlements.length === 0) {
+    return (
+      <div className="page">
+        <section className="hero-balance even">
+          <span className="hero-label">You are</span>
+          <span className="hero-amount">all square</span>
+        </section>
+        <section className="card">
+          <div className="empty-state">
+            <p className="empty">
+              No expenses yet. Split your first bill and balances will appear here.
+            </p>
+            <button className="btn primary block" onClick={onAddExpense}>
+              Add your first expense
+            </button>
+          </div>
+        </section>
+      </div>
+    )
+  }
 
   return (
     <div className="page">

@@ -145,10 +145,21 @@ For Google sign-in to work locally, add `http://localhost:5173` to Supabase's
 
 ## Ideas for v2
 
-- Edit expenses (currently delete + re-add)
-- Monthly summaries and category tags
-- Export to CSV
+- Recurring expenses (monthly rent/utilities with due reminders)
+- Member roles (owner/member) and invite-code management
 - Push/WhatsApp reminders for pending balances
+- Audit trail (who changed what, when)
+- Group avatars
+
+---
+
+## What's implemented today
+
+- Expense **editing** and **repeat** (one-tap duplicate from Activity)
+- Categories with search/filter, per-person spending breakdown
+- **Insights** tab: monthly spending bars, category breakdown, per-person paid/owed, CSV export
+- Per-group currency selection, dark mode, PWA install with shortcuts
+- Toast notifications and styled confirm dialogs in place of browser alerts
 
 ---
 
@@ -169,8 +180,12 @@ flatsplit/
 │       ├── GroupSetup.jsx      # create or join a group
 │       ├── Balances.jsx        # who owes whom
 │       ├── AddExpense.jsx      # expense form with 4 split types
-│       ├── Activity.jsx        # history + delete
+│       ├── Activity.jsx        # history + edit / repeat / delete
+│       ├── Insights.jsx        # monthly + category analytics, CSV export
 │       ├── Settle.jsx          # record payments
-│       └── GroupInfo.jsx       # invite code, members, sign out
+│       ├── GroupInfo.jsx       # invite code, members, group settings
+│       ├── Toast.jsx           # toast notifications
+│       ├── ConfirmDialog.jsx   # styled confirmation modal
+│       └── ErrorBoundary.jsx   # render-error fallback
 └── .env.example
 ```

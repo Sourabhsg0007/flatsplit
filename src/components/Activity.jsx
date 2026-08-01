@@ -1,17 +1,23 @@
 import { useState } from 'react'
+import { Copy, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { fmtMoney } from '../lib/balances'
+import ConfirmDialog from './ConfirmDialog'
+import { useToast } from './Toast'
 
 const CATEGORIES = [
   'Food & Groceries', 'Rent', 'Utilities', 'Transportation',
   'Entertainment', 'Shopping', 'Health', 'Other',
 ]
 
-export default function Activity({ me, members, expenses, settlements, currency, onChanged, onEditExpense }) {
+export default function Activity({ me, members, expenses, settlements, currency, onChanged, onEditExpense, onRepeatExpense }) {
   const [expanded, setExpanded] = useState(null)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [sortOrder, setSortOrder] = useState('newest')
+  const [confirmTarget, setConfirmTarget] = useState(null) // { kind, id }
+  const [busy, setBusy] = useState(false)
+  const toast = useToast()
   const nameOf = (id) => members.find((m) => m.id === id)?.full_name || 'Someone'
 
   let filtered = [
@@ -42,25 +48,36 @@ export default function Activity({ me, members, expenses, settlements, currency,
     return sortOrder === 'oldest' ? -cmp : cmp
   })
 
-  async function deleteExpense(id) {
-    if (!window.confirm('Delete this expense for everyone in the group?')) return
-    const { error } = await supabase.from('expenses').delete().eq('id', id)
-    if (error) window.alert(error.message)
-    else onChanged()
-  }
-
-  async function deleteSettlement(id) {
-    if (!window.confirm('Delete this recorded payment for everyone?')) return
-    const { error } = await supabase.from('settlements').delete().eq('id', id)
-    if (error) window.alert(error.message)
-    else onChanged()
+  async function runDelete() {
+    if (!confirmTarget) return
+    setBusy(true)
+    const { kind, id } = confirmTarget
+    const table = kind === 'expense' ? 'expenses' : 'settlements'
+    const { error } = await supabase.from(table).delete().eq('id', id)
+    setBusy(false)
+    setConfirmTarget(null)
+    if (error) {
+      toast('error', error.message)
+      return
+    }
+    toast('success', kind === 'expense' ? 'Expense deleted.' : 'Payment deleted.')
+    onChanged()
   }
 
   if (filtered.length === 0) {
     return (
       <div className="page">
         <section className="card">
-          <p className="empty">No activity yet. Add your first expense with the + button.</p>
+          <div className="empty-state">
+            <p className="empty">
+              {search || categoryFilter
+                ? 'Nothing matches that filter.'
+                : 'No activity yet. Add your first expense and it shows up here.'}
+            </p>
+            <button className="btn primary block" onClick={() => onEditExpense(null)}>
+              Add an expense
+            </button>
+          </div>
         </section>
       </div>
     )
@@ -118,7 +135,9 @@ export default function Activity({ me, members, expenses, settlements, currency,
                     <span className="activity-meta">{prettyDate(item.date)} · settlement</span>
                   </div>
                   <span className="money">{fmtMoney(s.amount, currency)}</span>
-                  <button className="icon-btn" title="Delete payment" onClick={() => deleteSettlement(s.id)}>{'\u2715'}</button>
+                  <button className="icon-btn" title="Delete payment" onClick={() => setConfirmTarget({ kind: 'settlement', id: s.id })}>
+                    <Trash2 size={16} />
+                  </button>
                 </li>
               )
             }
@@ -153,14 +172,35 @@ export default function Activity({ me, members, expenses, settlements, currency,
                 </div>
                 <span className="money">{fmtMoney(e.amount, currency)}</span>
                 <div className="activity-actions">
-                  <button className="icon-btn" title="Edit expense" onClick={() => onEditExpense(e)}>{'\u270E'}</button>
-                  <button className="icon-btn" title="Delete expense" onClick={() => deleteExpense(e.id)}>{'\u2715'}</button>
+                  <button className="icon-btn" title="Repeat this expense" onClick={() => onRepeatExpense(e)}>
+                    <Copy size={15} />
+                  </button>
+                  <button className="icon-btn" title="Edit expense" onClick={() => onEditExpense(e)}>
+                    <Pencil size={15} />
+                  </button>
+                  <button className="icon-btn danger" title="Delete expense" onClick={() => setConfirmTarget({ kind: 'expense', id: e.id })}>
+                    <Trash2 size={15} />
+                  </button>
                 </div>
               </li>
             )
           })}
         </ul>
       </section>
+
+      {confirmTarget && (
+        <ConfirmDialog
+          title={confirmTarget.kind === 'expense' ? 'Delete this expense?' : 'Delete this payment?'}
+          body={
+            confirmTarget.kind === 'expense'
+              ? 'This removes it for everyone in the group.'
+              : 'This removes the recorded payment for everyone in the group.'
+          }
+          confirmLabel={busy ? 'Deleting…' : 'Delete'}
+          onConfirm={runDelete}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
     </div>
   )
 }

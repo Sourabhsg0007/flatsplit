@@ -1,11 +1,24 @@
 import { useState } from 'react'
+import { Check, Copy, Pencil } from 'lucide-react'
 import { supabase } from '../supabaseClient'
+import { useToast } from './Toast'
+
+const CURRENCIES = [
+  { value: '₹', label: 'INR (₹)' },
+  { value: '$', label: 'USD ($)' },
+  { value: '€', label: 'EUR (€)' },
+  { value: '£', label: 'GBP (£)' },
+  { value: '¥', label: 'JPY (¥)' },
+  { value: 'AED', label: 'AED' },
+]
 
 export default function GroupInfo({ group, me, members, groups, onSwitchGroup, onNewGroup, onGroupUpdated }) {
   const [copied, setCopied] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [newName, setNewName] = useState(group.name)
+  const [currency, setCurrency] = useState(group.currency)
   const [busy, setBusy] = useState(false)
+  const toast = useToast()
 
   const inviteLink = `${window.location.origin}${window.location.pathname}?join=${group.invite_code}`
 
@@ -13,6 +26,7 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
     try {
       await navigator.clipboard.writeText(inviteLink)
       setCopied(true)
+      toast('success', 'Invite link copied.')
       setTimeout(() => setCopied(false), 1500)
     } catch {
       window.prompt('Copy this invite link:', inviteLink)
@@ -27,8 +41,25 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
       .update({ name: newName.trim() })
       .eq('id', group.id)
     setBusy(false)
-    if (error) { window.alert(error.message); return }
+    if (error) { toast('error', error.message); return }
     setEditingName(false)
+    toast('success', 'Group name updated.')
+    if (onGroupUpdated) onGroupUpdated()
+  }
+
+  async function saveCurrency(next) {
+    if (next === group.currency) return
+    setCurrency(next)
+    const { error } = await supabase
+      .from('groups')
+      .update({ currency: next })
+      .eq('id', group.id)
+    if (error) {
+      setCurrency(group.currency)
+      toast('error', error.message)
+      return
+    }
+    toast('success', `Currency set to ${next}.`)
     if (onGroupUpdated) onGroupUpdated()
   }
 
@@ -39,7 +70,7 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
         <p className="hint">Share this link — they&rsquo;ll join automatically after signing in:</p>
         <div className="invite-code" onClick={copyLink} role="button" tabIndex={0}>
           <span className="code" style={{ fontSize: '0.9rem', letterSpacing: '0.05em' }}>{inviteLink}</span>
-          <span className="copy-hint">{copied ? 'Copied!' : 'Tap to copy link'}</span>
+          <span className="copy-hint">{copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied!' : 'Tap to copy link'}</span>
         </div>
         <p className="hint" style={{ textAlign: 'center' }}>
           Or share the code: <strong>{group.invite_code}</strong>
@@ -69,10 +100,19 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
           <div className="group-name-row">
             <span className="group-name-text">{group.name}</span>
             <button className="btn small" onClick={() => { setEditingName(true); setNewName(group.name) }}>
-              Edit
+              <Pencil size={12} /> Edit
             </button>
           </div>
         )}
+
+        <label className="field" style={{ marginTop: 12 }}>
+          <span>Currency</span>
+          <select value={currency} onChange={(e) => saveCurrency(e.target.value)}>
+            {CURRENCIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </label>
       </section>
 
       <section className="card">
