@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { computeNetBalances, computeTotalSpent, computeTotalGroupExpenses, simplifyDebts, fmtMoney } from '../lib/balances'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
 
 export default function Balances({ me, members, expenses, settlements, currency, onGoSettle, onAddExpense }) {
   const [expandedSpender, setExpandedSpender] = useState(null)
@@ -27,9 +29,9 @@ export default function Balances({ me, members, expenses, settlements, currency,
             <p className="empty">
               No expenses yet. Split your first bill and balances will appear here.
             </p>
-            <button className="btn primary block" onClick={onAddExpense}>
+            <Button className="block" onClick={onAddExpense}>
               Add your first expense
-            </button>
+            </Button>
           </div>
         </section>
       </div>
@@ -75,7 +77,7 @@ export default function Balances({ me, members, expenses, settlements, currency,
                 >
                   <span className="ledger-name">
                     {m.full_name}
-                    {m.id === me.id && <em className="you-tag">you</em>}
+                    {m.id === me.id && <Badge variant="secondary">you</Badge>}
                   </span>
                   <span className="money">{fmtMoney(spent, currency)} <span className="pct">({share}%)</span></span>
                 </button>
@@ -116,7 +118,7 @@ export default function Balances({ me, members, expenses, settlements, currency,
               <li key={m.id} className="ledger-row">
                 <span className="ledger-name">
                   {m.full_name}
-                  {m.id === me.id && <em className="you-tag">you</em>}
+                  {m.id === me.id && <Badge variant="secondary">you</Badge>}
                 </span>
                 <span className={`money ${v > 0.009 ? 'pos' : v < -0.009 ? 'neg' : 'zero'}`}>
                   {v > 0.009 ? '+' : v < -0.009 ? '\u2212' : ''}{fmtMoney(v, currency)}
@@ -146,9 +148,9 @@ export default function Balances({ me, members, expenses, settlements, currency,
           </ul>
         )}
         {!allSettled && (
-          <button className="btn ghost block" onClick={onGoSettle}>
+          <Button variant="outline" className="block" onClick={onGoSettle}>
             Record a payment
-          </button>
+          </Button>
         )}
       </section>
     </div>

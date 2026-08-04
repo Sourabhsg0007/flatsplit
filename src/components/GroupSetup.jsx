@@ -1,5 +1,10 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { Alert, AlertDescription } from './ui/alert'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs'
 
 export default function GroupSetup({ onDone, onSignOut }) {
   const [tab, setTab] = useState('create') // 'create' | 'join'
@@ -44,54 +49,52 @@ export default function GroupSetup({ onDone, onSignOut }) {
           <p className="brand-sub">One person creates the group, everyone else joins with the code.</p>
         </div>
 
-        <div className="seg">
-          <button className={tab === 'create' ? 'seg-btn active' : 'seg-btn'} onClick={() => { setTab('create'); setError(null) }}>
-            Create a group
-          </button>
-          <button className={tab === 'join' ? 'seg-btn active' : 'seg-btn'} onClick={() => { setTab('join'); setError(null) }}>
-            Join with code
-          </button>
-        </div>
+        <Tabs value={tab} onValueChange={(value) => { setTab(value); setError(null) }}>
+          <TabsList>
+            <TabsTrigger value="create">Create a group</TabsTrigger>
+            <TabsTrigger value="join">Join with code</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {tab === 'create' ? (
           <>
             <label className="field">
-              <span>Group name</span>
-              <input
+              <Label htmlFor="group-name">Group name</Label>
+              <Input
+                id="group-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. 402, Green Residency"
-                onKeyDown={(e) => e.key === 'Enter' && createGroup()}
               />
             </label>
-            {error && <div className="notice error">{error}</div>}
-            <button className="btn primary block" onClick={createGroup} disabled={busy}>
+            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+            <Button className="block" onClick={createGroup} disabled={busy}>
               {busy ? 'Creating…' : 'Create group'}
-            </button>
+            </Button>
           </>
         ) : (
           <>
             <label className="field">
-              <span>Invite code</span>
-              <input
+              <Label htmlFor="invite-code">Invite code</Label>
+              <Input
+                id="invite-code"
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 placeholder="6-character code"
                 maxLength={6}
                 style={{ textTransform: 'uppercase', letterSpacing: '0.2em' }}
-                onKeyDown={(e) => e.key === 'Enter' && joinGroup()}
               />
             </label>
-            {error && <div className="notice error">{error}</div>}
-            <button className="btn primary block" onClick={joinGroup} disabled={busy}>
+            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+            <Button className="block" onClick={joinGroup} disabled={busy}>
               {busy ? 'Joining…' : 'Join group'}
-            </button>
+            </Button>
           </>
         )}
 
-        <button className="btn link block" onClick={onSignOut}>Sign out</button>
+        <Button className="block" variant="link" onClick={onSignOut}>Sign out</Button>
       </div>
     </div>
   )

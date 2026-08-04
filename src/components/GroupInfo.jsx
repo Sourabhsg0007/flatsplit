@@ -3,6 +3,10 @@ import { Check, Copy, Pencil } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import ConfirmDialog from './ConfirmDialog'
 import { useToast } from './Toast'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 
 const CURRENCIES = [
   { value: '₹', label: 'INR (₹)' },
@@ -137,9 +141,9 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
   function renderLeaveSection() {
     if (!showLeaveOptions) {
       return (
-        <button className="btn ghost block" onClick={() => setShowLeaveOptions(true)} disabled={busy}>
+        <Button variant="outline" className="block" onClick={() => setShowLeaveOptions(true)} disabled={busy}>
           Leave group
-        </button>
+        </Button>
       )
     }
 
@@ -151,43 +155,37 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
           {leaveMode === null && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {others.length > 0 && (
-                <button className="btn ghost block" onClick={() => setLeaveMode('transfer')}>
+                <Button variant="outline" className="block" onClick={() => setLeaveMode('transfer')}>
                   Transfer ownership & leave
-                </button>
+                </Button>
               )}
-              <button className="btn ghost block" onClick={() => setLeaveMode('delete')}>
+              <Button variant="outline" className="block" onClick={() => setLeaveMode('delete')}>
                 Delete group for everyone
-              </button>
-              <button className="btn link block" onClick={() => { setShowLeaveOptions(false); setLeaveMode(null) }}>
+              </Button>
+              <Button variant="link" className="block" onClick={() => { setShowLeaveOptions(false); setLeaveMode(null) }}>
                 Cancel
-              </button>
+              </Button>
             </div>
           )}
 
           {leaveMode === 'transfer' && (
             <>
               <p className="hint">Choose who becomes the new owner:</p>
-              <select
-                className="block-select"
-                value={newAdminId}
-                onChange={(e) => setNewAdminId(e.target.value)}
-              >
-                <option value="">Select a member...</option>
-                {others.map((m) => (
-                  <option key={m.id} value={m.id}>{m.full_name}</option>
-                ))}
-              </select>
+              <Select value={newAdminId} onValueChange={setNewAdminId}>
+                <SelectTrigger><SelectValue placeholder="Select a member..." /></SelectTrigger>
+                <SelectContent>{others.map((m) => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}</SelectContent>
+              </Select>
               <div className="field-row" style={{ marginTop: '10px' }}>
-                <button className="btn ghost block" onClick={() => { setLeaveMode(null); setNewAdminId('') }}>
+                <Button variant="outline" className="block" onClick={() => { setLeaveMode(null); setNewAdminId('') }}>
                   Back
-                </button>
-                <button
-                  className="btn primary block"
+                </Button>
+                <Button
+                  className="block"
                   onClick={handleTransferAndLeave}
                   disabled={busy || !newAdminId}
                 >
                   {busy ? 'Processing...' : 'Transfer & leave'}
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -198,13 +196,12 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
                 This hides the group and all its data for everyone.
               </p>
               <div className="field-row">
-                <button className="btn ghost block" onClick={() => setLeaveMode(null)}>
+                <Button variant="outline" className="block" onClick={() => setLeaveMode(null)}>
                   Back
-                </button>
-                <button className="btn primary block" onClick={handleDeleteGroup} disabled={busy}
-                  style={{ background: 'var(--neg)', borderColor: 'var(--neg)' }}>
+                </Button>
+                <Button variant="destructive" className="block" onClick={handleDeleteGroup} disabled={busy}>
                   {busy ? 'Deleting...' : 'Delete group'}
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -213,9 +210,9 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
     }
 
     return (
-      <button className="btn ghost block" onClick={handleLeave} disabled={busy}>
+      <Button variant="outline" className="block" onClick={handleLeave} disabled={busy}>
         {busy ? 'Leaving...' : 'Leave group'}
-      </button>
+      </Button>
     )
   }
 
@@ -224,10 +221,10 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
       <section className="card">
         <h2 className="card-title">Invite flatmates</h2>
         <p className="hint">Share this link &mdash; they&rsquo;ll join automatically after signing in:</p>
-        <div className="invite-code" onClick={copyLink} role="button" tabIndex={0}>
+        <button className="invite-code" onClick={copyLink} type="button">
           <span className="code" style={{ fontSize: '0.9rem', letterSpacing: '0.05em' }}>{inviteLink}</span>
           <span className="copy-hint">{copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied!' : 'Tap to copy link'}</span>
-        </div>
+        </button>
         <p className="hint" style={{ textAlign: 'center' }}>
           Or share the code: <strong>{group.invite_code}</strong>
         </p>
@@ -237,7 +234,7 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
         <h2 className="card-title">Group</h2>
         {editingName ? (
           <div className="field-row">
-            <input
+            <Input
               type="text"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -245,31 +242,30 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
               onKeyDown={(e) => e.key === 'Enter' && saveName()}
               autoFocus
             />
-            <button className="btn small" onClick={saveName} disabled={busy}>
+            <Button size="sm" variant="outline" onClick={saveName} disabled={busy}>
               Save
-            </button>
-            <button className="btn small" onClick={() => { setEditingName(false); setNewName(group.name) }}>
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setEditingName(false); setNewName(group.name) }}>
               Cancel
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="group-name-row">
             <span className="group-name-text">{group.name}</span>
             {isAdmin && (
-              <button className="btn small" onClick={() => { setEditingName(true); setNewName(group.name) }}>
+              <Button size="sm" variant="outline" onClick={() => { setEditingName(true); setNewName(group.name) }}>
                 <Pencil size={12} /> Edit
-              </button>
+              </Button>
             )}
           </div>
         )}
 
         <label className="field" style={{ marginTop: 12 }}>
-          <span>Currency</span>
-          <select value={currency} onChange={(e) => saveCurrency(e.target.value)}>
-            {CURRENCIES.map((c) => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
+          <Label htmlFor="group-currency">Currency</Label>
+          <Select value={currency} onValueChange={saveCurrency}>
+            <SelectTrigger id="group-currency"><SelectValue /></SelectTrigger>
+            <SelectContent>{CURRENCIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+          </Select>
         </label>
       </section>
 
@@ -287,14 +283,14 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
               </span>
               <span className="activity-meta">{m.email || ''}</span>
               {isAdmin && m.id !== me.id && (
-                <button
-                  className="btn small"
-                  style={{ color: 'var(--neg)', borderColor: 'var(--neg)' }}
+                <Button
+                  size="sm"
+                  variant="destructive"
                   onClick={() => handleRemoveMember(m.id)}
                   disabled={busy}
                 >
                   Remove
-                </button>
+                </Button>
               )}
             </li>
           ))}
@@ -304,23 +300,18 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
       {groups.length > 1 && (
         <section className="card">
           <h2 className="card-title">Switch group</h2>
-          <select
-            className="block-select"
-            value={group.id}
-            onChange={(e) => onSwitchGroup(e.target.value)}
-          >
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
+          <Select value={group.id} onValueChange={onSwitchGroup}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{groups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}</SelectContent>
+          </Select>
         </section>
       )}
 
       <section className="card">
         {renderLeaveSection()}
-        <button className="btn link block" onClick={() => supabase.auth.signOut()}>
+        <Button variant="link" className="block" onClick={() => supabase.auth.signOut()}>
           Sign out
-        </button>
+        </Button>
       </section>
 
       {confirmTarget && (

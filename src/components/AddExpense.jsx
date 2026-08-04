@@ -2,6 +2,13 @@ import { useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { computeSplits, fmtMoney } from '../lib/balances'
 import { useToast } from './Toast'
+import { Alert, AlertDescription } from './ui/alert'
+import { Button } from './ui/button'
+import { CheckboxControl } from './ui/checkbox'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs'
 
 const SPLIT_TYPES = [
   { key: 'equal', label: 'Equally' },
@@ -121,8 +128,9 @@ export default function AddExpense({ group, me, members, onSaved, onCancel, expe
         </h2>
 
         <label className="field">
-          <span>Description</span>
-          <input
+          <Label htmlFor="expense-description">Description</Label>
+          <Input
+            id="expense-description"
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -132,8 +140,9 @@ export default function AddExpense({ group, me, members, onSaved, onCancel, expe
 
         <div className="field-row">
           <label className="field">
-            <span>Amount ({group.currency})</span>
-            <input
+            <Label htmlFor="expense-amount">Amount ({group.currency})</Label>
+            <Input
+              id="expense-amount"
               type="number"
               inputMode="decimal"
               min="0"
@@ -144,45 +153,35 @@ export default function AddExpense({ group, me, members, onSaved, onCancel, expe
             />
           </label>
           <label className="field">
-            <span>Date</span>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Label htmlFor="expense-date">Date</Label>
+            <Input id="expense-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
         </div>
 
         <label className="field">
-          <span>Category</span>
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+          <Label htmlFor="expense-category">Category</Label>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger id="expense-category"><SelectValue /></SelectTrigger>
+            <SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+          </Select>
         </label>
 
         <label className="field">
-          <span>Paid by</span>
-          <select value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.id === me.id ? `${m.full_name} (you)` : m.full_name}
-              </option>
-            ))}
-          </select>
+          <Label htmlFor="expense-paid-by">Paid by</Label>
+          <Select value={paidBy} onValueChange={setPaidBy}>
+            <SelectTrigger id="expense-paid-by"><SelectValue /></SelectTrigger>
+            <SelectContent>{members.map((m) => <SelectItem key={m.id} value={m.id}>{m.id === me.id ? `${m.full_name} (you)` : m.full_name}</SelectItem>)}</SelectContent>
+          </Select>
         </label>
       </section>
 
       <section className="card">
         <h2 className="card-title">Split</h2>
-        <div className="seg">
-          {SPLIT_TYPES.map((t) => (
-            <button
-              key={t.key}
-              className={splitType === t.key ? 'seg-btn active' : 'seg-btn'}
-              onClick={() => setSplitType(t.key)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <Tabs value={splitType} onValueChange={setSplitType}>
+          <TabsList>
+            {SPLIT_TYPES.map((t) => <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>)}
+          </TabsList>
+        </Tabs>
 
         <ul className="split-list">
           {rows.map((r) => {
@@ -190,17 +189,16 @@ export default function AddExpense({ group, me, members, onSaved, onCancel, expe
             return (
               <li key={r.user_id} className={`split-row ${r.included ? '' : 'excluded'}`}>
                 <label className="split-check">
-                  <input
-                    type="checkbox"
+                  <CheckboxControl
                     checked={r.included}
-                    onChange={(e) => setRow(r.user_id, { included: e.target.checked })}
+                    onCheckedChange={(checked) => setRow(r.user_id, { included: checked === true })}
                   />
                   <span>{r.user_id === me.id ? `${nameOf(r.user_id)} (you)` : nameOf(r.user_id)}</span>
                 </label>
 
                 {splitType !== 'equal' && r.included && (
                   <span className="split-input">
-                    <input
+                    <Input
                       type="number"
                       inputMode="decimal"
                       min="0"
@@ -221,14 +219,14 @@ export default function AddExpense({ group, me, members, onSaved, onCancel, expe
           })}
         </ul>
 
-        {preview?.error && total > 0 && <div className="notice error">{preview.error}</div>}
-        {error && <div className="notice error">{error}</div>}
+        {preview?.error && total > 0 && <Alert variant="destructive"><AlertDescription>{preview.error}</AlertDescription></Alert>}
+        {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 
         <div className="field-row">
-          <button className="btn ghost block" onClick={onCancel}>Cancel</button>
-          <button className="btn primary block" onClick={save} disabled={busy}>
+          <Button className="block" variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button className="block" onClick={save} disabled={busy}>
             {busy ? 'Saving...' : isEdit ? 'Update expense' : isRepeat ? 'Save as new' : 'Save expense'}
-          </button>
+          </Button>
         </div>
       </section>
     </div>

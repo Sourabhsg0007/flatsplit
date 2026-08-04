@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { computeNetBalances, simplifyDebts, fmtMoney } from '../lib/balances'
 import { useToast } from './Toast'
+import { Alert, AlertDescription } from './ui/alert'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 
 export default function Settle({ group, me, members, expenses, settlements, onSaved }) {
   const memberIds = members.map((m) => m.id)
@@ -63,7 +68,7 @@ export default function Settle({ group, me, members, expenses, settlements, onSa
                   <strong>{t.to === me.id ? 'you' : nameOf(t.to)}</strong>
                 </span>
                 <span className="money">{fmtMoney(t.amount, group.currency)}</span>
-                <button className="btn small" onClick={() => applySuggestion(t)}>Use</button>
+                <Button size="sm" variant="outline" onClick={() => applySuggestion(t)}>Use</Button>
               </li>
             ))}
           </ul>
@@ -79,31 +84,26 @@ export default function Settle({ group, me, members, expenses, settlements, onSa
 
         <div className="field-row">
           <label className="field">
-            <span>From</span>
-            <select value={fromUser} onChange={(e) => setFromUser(e.target.value)}>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.id === me.id ? `${m.full_name} (you)` : m.full_name}
-                </option>
-              ))}
-            </select>
+            <Label htmlFor="settle-from">From</Label>
+            <Select value={fromUser} onValueChange={setFromUser}>
+              <SelectTrigger id="settle-from"><SelectValue /></SelectTrigger>
+              <SelectContent>{members.map((m) => <SelectItem key={m.id} value={m.id}>{m.id === me.id ? `${m.full_name} (you)` : m.full_name}</SelectItem>)}</SelectContent>
+            </Select>
           </label>
           <label className="field">
-            <span>To</span>
-            <select value={toUser} onChange={(e) => setToUser(e.target.value)}>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.id === me.id ? `${m.full_name} (you)` : m.full_name}
-                </option>
-              ))}
-            </select>
+            <Label htmlFor="settle-to">To</Label>
+            <Select value={toUser} onValueChange={setToUser}>
+              <SelectTrigger id="settle-to"><SelectValue /></SelectTrigger>
+              <SelectContent>{members.map((m) => <SelectItem key={m.id} value={m.id}>{m.id === me.id ? `${m.full_name} (you)` : m.full_name}</SelectItem>)}</SelectContent>
+            </Select>
           </label>
         </div>
 
         <div className="field-row">
           <label className="field">
-            <span>Amount ({group.currency})</span>
-            <input
+            <Label htmlFor="settle-amount">Amount ({group.currency})</Label>
+            <Input
+              id="settle-amount"
               type="number"
               inputMode="decimal"
               min="0"
@@ -114,8 +114,9 @@ export default function Settle({ group, me, members, expenses, settlements, onSa
             />
           </label>
           <label className="field">
-            <span>Note (optional)</span>
-            <input
+            <Label htmlFor="settle-note">Note (optional)</Label>
+            <Input
+              id="settle-note"
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -124,11 +125,11 @@ export default function Settle({ group, me, members, expenses, settlements, onSa
           </label>
         </div>
 
-        {error && <div className="notice error">{error}</div>}
+        {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 
-        <button className="btn primary block" onClick={save} disabled={busy}>
+        <Button className="block" onClick={save} disabled={busy}>
           {busy ? 'Recording…' : 'Record payment'}
-        </button>
+        </Button>
       </section>
     </div>
   )
