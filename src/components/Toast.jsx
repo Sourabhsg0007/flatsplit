@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useRef, useState } from 'react'
+import { X } from 'lucide-react'
+import { Button } from './ui/button'
 
 const ToastContext = createContext(() => {})
 
@@ -25,9 +27,9 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.kind}`}>
             <span>{t.text}</span>
-            <button className="toast-dismiss" onClick={() => dismiss(t.id)} aria-label="Dismiss">
-              {'\u2715'}
-            </button>
+            <Button variant="ghost" size="icon" className="toast-dismiss" onClick={() => dismiss(t.id)} aria-label="Dismiss">
+              <X size={15} />
+            </Button>
           </div>
         ))}
       </div>

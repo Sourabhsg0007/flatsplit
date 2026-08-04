@@ -1,25 +1,30 @@
 import { AlertTriangle } from 'lucide-react'
+import { Button } from './ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
 
 export default function ConfirmDialog({ title, body, confirmLabel = 'Delete', onConfirm, onCancel }) {
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onCancel}>
-      <div
-        className="modal-card"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="modal-icon danger">
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <div className="modal-icon danger">
           <AlertTriangle size={22} />
-        </div>
-        <h2 id="confirm-title" className="modal-title">{title}</h2>
-        {body && <p className="modal-body">{body}</p>}
-        <div className="modal-actions">
-          <button className="btn ghost block" onClick={onCancel}>Cancel</button>
-          <button className="btn danger block" onClick={onConfirm}>{confirmLabel}</button>
-        </div>
-      </div>
-    </div>
+          </div>
+          <DialogTitle>{title}</DialogTitle>
+          {body && <DialogDescription>{body}</DialogDescription>}
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button variant="destructive" onClick={onConfirm}>{confirmLabel}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

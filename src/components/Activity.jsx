@@ -4,6 +4,10 @@ import { supabase } from '../supabaseClient'
 import { fmtMoney } from '../lib/balances'
 import ConfirmDialog from './ConfirmDialog'
 import { useToast } from './Toast'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 
 const CATEGORIES = [
   'Food & Groceries', 'Rent', 'Utilities', 'Transportation',
@@ -47,6 +51,7 @@ export default function Activity({ me, members, expenses, settlements, currency,
     const cmp = a.date === b.date ? (a.created < b.created ? 1 : -1) : a.date < b.date ? 1 : -1
     return sortOrder === 'oldest' ? -cmp : cmp
   })
+  const hasFilters = Boolean(search.trim() || categoryFilter)
 
   async function runDelete() {
     if (!confirmTarget) return
@@ -64,64 +69,74 @@ export default function Activity({ me, members, expenses, settlements, currency,
     onChanged()
   }
 
-  if (filtered.length === 0) {
-    return (
-      <div className="page">
-        <section className="card">
-          <div className="empty-state">
-            <p className="empty">
-              {search || categoryFilter
-                ? 'Nothing matches that filter.'
-                : 'No activity yet. Add your first expense and it shows up here.'}
-            </p>
-            <button className="btn primary block" onClick={() => onEditExpense(null)}>
-              Add an expense
-            </button>
-          </div>
-        </section>
-      </div>
-    )
-  }
-
   return (
     <div className="page">
       <section className="card">
         <h2 className="card-title">Activity</h2>
 
         <div className="field-row activity-controls">
-          <input
+          <Input
             type="text"
             className="activity-search"
             placeholder="Search expenses..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className="activity-sort">
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-          </select>
+          <Select value={sortOrder} onValueChange={setSortOrder}>
+            <SelectTrigger className="activity-sort"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="oldest">Oldest</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="activity-categories">
-          <button
-            className={`cat-chip ${!categoryFilter ? 'active' : ''}`}
-            onClick={() => setCategoryFilter('')}
-          >
-            All
-          </button>
+            <Button
+              type="button"
+              size="sm"
+              variant={!categoryFilter ? 'default' : 'outline'}
+              className="cat-chip"
+              onClick={() => setCategoryFilter('')}
+            >
+              All
+            </Button>
           {CATEGORIES.map((c) => (
-            <button
+            <Button
               key={c}
-              className={`cat-chip ${categoryFilter === c ? 'active' : ''}`}
+              type="button"
+              size="sm"
+              variant={categoryFilter === c ? 'default' : 'outline'}
+              className="cat-chip"
               onClick={() => setCategoryFilter(categoryFilter === c ? '' : c)}
             >
               {c}
-            </button>
+            </Button>
           ))}
         </div>
 
         <ul className="activity-list">
-          {filtered.map((item) => {
+          {filtered.length === 0 ? (
+            <li className="activity-empty-row">
+              <div className="empty-state">
+                <p className="empty">
+                  {hasFilters
+                    ? 'Nothing matches those filters.'
+                    : 'No activity yet. Add your first expense and it shows up here.'}
+                </p>
+                <div className="activity-empty-actions">
+                  {hasFilters && (
+                    <Button variant="outline" onClick={() => { setSearch(''); setCategoryFilter('') }}>
+                      Clear filters
+                    </Button>
+                  )}
+                  <Button onClick={() => onEditExpense(null)}>
+                    Add an expense
+                  </Button>
+                </div>
+              </div>
+            </li>
+          ) : filtered.map((item) => {
             if (item.kind === 'settlement') {
               const s = item.data
               return (
@@ -135,9 +150,9 @@ export default function Activity({ me, members, expenses, settlements, currency,
                     <span className="activity-meta">{prettyDate(item.date)} · settlement</span>
                   </div>
                   <span className="money">{fmtMoney(s.amount, currency)}</span>
-                  <button className="icon-btn" title="Delete payment" onClick={() => setConfirmTarget({ kind: 'settlement', id: s.id })}>
+                  <Button size="icon" variant="ghost" className="icon-btn" title="Delete payment" onClick={() => setConfirmTarget({ kind: 'settlement', id: s.id })}>
                     <Trash2 size={16} />
-                  </button>
+                  </Button>
                 </li>
               )
             }
@@ -153,7 +168,7 @@ export default function Activity({ me, members, expenses, settlements, currency,
                 >
                   <span className="activity-desc">
                     {e.description}
-                    {e.category && <span className="activity-cat-tag">{e.category}</span>}
+                    {e.category && <Badge variant="default" className="activity-cat-tag">{e.category}</Badge>}
                   </span>
                   <span className="activity-meta">
                     {prettyDate(item.date)} · {e.paid_by === me.id ? 'you' : nameOf(e.paid_by)} paid
@@ -172,15 +187,15 @@ export default function Activity({ me, members, expenses, settlements, currency,
                 </div>
                 <span className="money">{fmtMoney(e.amount, currency)}</span>
                 <div className="activity-actions">
-                  <button className="icon-btn" title="Repeat this expense" onClick={() => onRepeatExpense(e)}>
+                  <Button size="icon" variant="ghost" className="icon-btn" title="Repeat this expense" onClick={() => onRepeatExpense(e)}>
                     <Copy size={15} />
-                  </button>
-                  <button className="icon-btn" title="Edit expense" onClick={() => onEditExpense(e)}>
+                  </Button>
+                  <Button size="icon" variant="ghost" className="icon-btn" title="Edit expense" onClick={() => onEditExpense(e)}>
                     <Pencil size={15} />
-                  </button>
-                  <button className="icon-btn danger" title="Delete expense" onClick={() => setConfirmTarget({ kind: 'expense', id: e.id })}>
+                  </Button>
+                  <Button size="icon" variant="ghost" className="icon-btn danger" title="Delete expense" onClick={() => setConfirmTarget({ kind: 'expense', id: e.id })}>
                     <Trash2 size={15} />
-                  </button>
+                  </Button>
                 </div>
               </li>
             )

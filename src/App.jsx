@@ -10,6 +10,8 @@ import Insights from './components/Insights'
 import Settle from './components/Settle'
 import GroupInfo from './components/GroupInfo'
 import { useToast } from './components/Toast'
+import { Button } from './components/ui/button'
+import { Skeleton } from './components/ui/skeleton'
 
 export default function App() {
   const [session, setSession] = useState(undefined)
@@ -27,6 +29,8 @@ export default function App() {
   const [repeatOf, setRepeatOf] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('flatsplit-theme')
+      if (saved) return saved === 'dark'
       return window.matchMedia('(prefers-color-scheme: dark)').matches
     }
     return false
@@ -35,6 +39,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    window.localStorage.setItem('flatsplit-theme', darkMode ? 'dark' : 'light')
     const meta = document.querySelector('meta[name="theme-color"]')
     if (meta) meta.setAttribute('content', darkMode ? '#1A1F1D' : '#21312A')
   }, [darkMode])
@@ -222,23 +227,47 @@ export default function App() {
       <header className="topbar">
         <span className="topbar-brand">÷</span>
         <span className="topbar-title">{group.name}</span>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           className="topbar-icon"
+          type="button"
           onClick={() => setTab('group')}
           title="Group settings"
           aria-label="Group settings"
         >
           <Settings size={18} />
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
           className="topbar-icon"
+          type="button"
           onClick={() => setDarkMode((d) => !d)}
           title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
           aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
         >
           {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
+        </Button>
       </header>
+
+      <nav className="tabbar">
+        <button className={tab === 'balances' ? 'tab active' : 'tab'} onClick={() => setTab('balances')}>
+          <span className="tab-icon"><Home size={20} /></span>Balances
+        </button>
+        <button className={tab === 'activity' ? 'tab active' : 'tab'} onClick={() => setTab('activity')}>
+          <span className="tab-icon"><List size={20} /></span>Activity
+        </button>
+        <button className="tab add-btn" onClick={openAdd} aria-label="Add expense">
+          <Plus size={26} />
+        </button>
+        <button className={tab === 'insights' ? 'tab active' : 'tab'} onClick={() => setTab('insights')}>
+          <span className="tab-icon"><BarChart3 size={20} /></span>Insights
+        </button>
+        <button className={tab === 'settle' ? 'tab active' : 'tab'} onClick={() => setTab('settle')}>
+          <span className="tab-icon"><ArrowLeftRight size={20} /></span>Settle
+        </button>
+      </nav>
 
       <main className="content">
         {tab === 'balances' && (
@@ -306,23 +335,6 @@ export default function App() {
         )}
       </main>
 
-      <nav className="tabbar">
-        <button className={tab === 'balances' ? 'tab active' : 'tab'} onClick={() => setTab('balances')}>
-          <span className="tab-icon"><Home size={20} /></span>Balances
-        </button>
-        <button className={tab === 'activity' ? 'tab active' : 'tab'} onClick={() => setTab('activity')}>
-          <span className="tab-icon"><List size={20} /></span>Activity
-        </button>
-        <button className="tab add-btn" onClick={openAdd} aria-label="Add expense">
-          <Plus size={26} />
-        </button>
-        <button className={tab === 'insights' ? 'tab active' : 'tab'} onClick={() => setTab('insights')}>
-          <span className="tab-icon"><BarChart3 size={20} /></span>Insights
-        </button>
-        <button className={tab === 'settle' ? 'tab active' : 'tab'} onClick={() => setTab('settle')}>
-          <span className="tab-icon"><ArrowLeftRight size={20} /></span>Settle
-        </button>
-      </nav>
     </div>
   )
 }
@@ -338,7 +350,7 @@ function SkeletonScreen() {
       </header>
       <main className="content">
         <div className="page">
-          <div className="hero-balance skeleton-block" />
+          <Skeleton className="hero-balance skeleton-block" />
           <div className="card">
             <div className="skeleton-text" style={{ width: '60%' }} />
             <div className="skeleton-text" style={{ width: '80%' }} />

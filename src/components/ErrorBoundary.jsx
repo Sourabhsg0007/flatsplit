@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import { Button } from './ui/button'
 
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -22,9 +23,9 @@ export default class ErrorBoundary extends Component {
                 A hiccup while rendering. Refresh to keep going — your data is safe.
               </p>
             </div>
-            <button className="btn primary block" onClick={() => window.location.reload()}>
+            <Button className="block" onClick={() => window.location.reload()}>
               Reload
-            </button>
+            </Button>
           </div>
         </div>
       )

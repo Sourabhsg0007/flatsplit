@@ -1,5 +1,10 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { Alert, AlertDescription } from './ui/alert'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs'
 
 export default function Auth() {
   const [mode, setMode] = useState('signin') // 'signin' | 'signup'
@@ -9,19 +14,20 @@ export default function Auth() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(null) // { kind: 'error' | 'info', text }
 
-  async function handleSubmit() {
+  async function handleSubmit(event) {
+    event?.preventDefault()
     setMessage(null)
     if (!email.trim() || !password) {
       setMessage({ kind: 'error', text: 'Enter your email and password.' })
       return
     }
+    if (mode === 'signup' && !fullName.trim()) {
+      setMessage({ kind: 'error', text: 'Enter your name so flatmates recognise you.' })
+      return
+    }
     setBusy(true)
     try {
       if (mode === 'signup') {
-        if (!fullName.trim()) {
-          setMessage({ kind: 'error', text: 'Enter your name so flatmates recognise you.' })
-          return
-        }
         const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
@@ -59,32 +65,25 @@ export default function Auth() {
 
   return (
     <div className="auth-wrap">
-      <div className="auth-card">
+      <form className="auth-card" onSubmit={handleSubmit}>
         <div className="brand">
           <span className="brand-mark">÷</span>
           <h1>FlatSplit</h1>
           <p className="brand-sub">Shared expenses, settled simply.</p>
         </div>
 
-        <div className="seg">
-          <button
-            className={mode === 'signin' ? 'seg-btn active' : 'seg-btn'}
-            onClick={() => { setMode('signin'); setMessage(null) }}
-          >
-            Sign in
-          </button>
-          <button
-            className={mode === 'signup' ? 'seg-btn active' : 'seg-btn'}
-            onClick={() => { setMode('signup'); setMessage(null) }}
-          >
-            Create account
-          </button>
-        </div>
+        <Tabs value={mode} onValueChange={(value) => { setMode(value); setMessage(null) }}>
+          <TabsList>
+            <TabsTrigger value="signin">Sign in</TabsTrigger>
+            <TabsTrigger value="signup">Create account</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {mode === 'signup' && (
           <label className="field">
-            <span>Your name</span>
-            <input
+            <Label htmlFor="auth-name">Your name</Label>
+            <Input
+              id="auth-name"
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
@@ -95,8 +94,9 @@ export default function Auth() {
         )}
 
         <label className="field">
-          <span>Email</span>
-          <input
+          <Label htmlFor="auth-email">Email</Label>
+          <Input
+            id="auth-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -106,29 +106,33 @@ export default function Auth() {
         </label>
 
         <label className="field">
-          <span>Password</span>
-          <input
+          <Label htmlFor="auth-password">Password</Label>
+          <Input
+            id="auth-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder={mode === 'signup' ? 'At least 6 characters' : 'Your password'}
             autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           />
         </label>
 
-        {message && <div className={`notice ${message.kind}`}>{message.text}</div>}
+        {message && (
+          <Alert variant={message.kind === 'error' ? 'destructive' : 'default'}>
+            <AlertDescription>{message.text}</AlertDescription>
+          </Alert>
+        )}
 
-        <button className="btn primary block" onClick={handleSubmit} disabled={busy}>
+        <Button className="block" type="submit" disabled={busy}>
           {busy ? 'One moment…' : mode === 'signup' ? 'Create account' : 'Sign in'}
-        </button>
+        </Button>
 
         <div className="divider"><span>or</span></div>
 
-        <button className="btn ghost block" onClick={handleGoogle}>
+        <Button className="block" type="button" variant="outline" onClick={handleGoogle} disabled={busy}>
           <GoogleIcon /> Continue with Google
-        </button>
-      </div>
+        </Button>
+      </form>
     </div>
   )
 }
