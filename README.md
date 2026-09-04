@@ -143,13 +143,12 @@ For Google sign-in to work locally, add `http://localhost:5173` to Supabase's
   and click Restore if that ever happens (data is kept).
 - **Vercel free (Hobby):** 100 GB bandwidth/month — effectively unlimited for this.
 
-## Ideas for v2
+## Ideas for v3
 
-- Recurring expenses (monthly rent/utilities with due reminders)
-- Member roles (owner/member) and invite-code management
 - Push/WhatsApp reminders for pending balances
 - Audit trail (who changed what, when)
-- Group avatars
+- Group avatars and receipt photo attachments
+- Split types other than equal for recurring bills
 
 ---
 
@@ -157,9 +156,24 @@ For Google sign-in to work locally, add `http://localhost:5173` to Supabase's
 
 - Expense **editing** and **repeat** (one-tap duplicate from Activity)
 - Categories with search/filter, per-person spending breakdown
-- **Insights** tab: monthly spending bars, category breakdown, per-person paid/owed, CSV export
+- **Insights** tab: interactive donut chart with tap-to-drill-down, clickable
+  monthly bars, per-person paid/owed, CSV export
+- **Monthly splits**: Activity is organised into "July split", "August split"
+  sections with per-month totals and your share
+- **Recurring expenses**: rent/Wi-Fi auto-added every month on the due day
+  (manage them under Group settings)
+- **Comments & reactions** on every expense — tap an expense in Activity
+- **Profile** page (person icon in the top bar): edit your display name
+- **Settlement history**: every recorded payment, on the Settle screen
+- **Personal tracker** tab: a private expense log only you can see (enforced
+  by Row Level Security, not just the UI)
+- Undo after deleting an expense or payment
 - Per-group currency selection, dark mode, PWA install with shortcuts
 - Toast notifications and styled confirm dialogs in place of browser alerts
+
+> **Upgrading an existing deployment?** Run `supabase/migration_v4.sql` once in
+> the Supabase SQL Editor (after the earlier migrations). New installs need
+> `schema.sql` plus the migrations in order.
 
 ---
 
@@ -182,7 +196,12 @@ flatsplit/
 │       ├── AddExpense.jsx      # expense form with 4 split types
 │       ├── Activity.jsx        # history + edit / repeat / delete
 │       ├── Insights.jsx        # monthly + category analytics, CSV export
-│       ├── Settle.jsx          # record payments
+│       ├── Settle.jsx          # record payments + full history
+│       ├── Profile.jsx         # your account, edit display name
+│       ├── Personal.jsx        # private per-user expense tracker
+│       ├── Recurring.jsx       # monthly auto-added bills
+│       ├── ExpenseSocial.jsx   # comments + emoji reactions
+│       ├── DonutChart.jsx      # interactive SVG category chart
 │       ├── GroupInfo.jsx       # invite code, members, group settings
 │       ├── Toast.jsx           # toast notifications
 │       ├── ConfirmDialog.jsx   # styled confirmation modal

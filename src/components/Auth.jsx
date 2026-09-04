@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import { Alert, AlertDescription } from './ui/alert'
 import { Button } from './ui/button'
@@ -12,6 +13,7 @@ export default function Auth() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showPw, setShowPw] = useState(false)
   const [message, setMessage] = useState(null) // { kind: 'error' | 'info', text }
 
   async function handleSubmit(event) {
@@ -64,12 +66,17 @@ export default function Auth() {
   }
 
   return (
-    <div className="auth-wrap">
-      <form className="auth-card" onSubmit={handleSubmit}>
-        <div className="brand">
-          <span className="brand-mark">÷</span>
-          <h1>FlatSplit</h1>
-          <p className="brand-sub">Shared expenses, settled simply.</p>
+    <div className="auth-scene">
+      <span className="auth-watermark" aria-hidden="true">÷</span>
+      <div className="auth-hero">
+        <span className="brand-mark auth-hero-mark">÷</span>
+        <h1 className="auth-hero-name">FlatSplit</h1>
+        <p className="auth-hero-tag">Shared expenses, settled simply.</p>
+      </div>
+      <form className="auth-card auth-card-v2" onSubmit={handleSubmit}>
+        <div className="auth-card-head">
+          <h2>{mode === 'signup' ? 'Join your flat' : 'Welcome back'}</h2>
+          <p>{mode === 'signup' ? 'One account, every shared bill sorted.' : 'Sign in to see who owes whom.'}</p>
         </div>
 
         <Tabs value={mode} onValueChange={(value) => { setMode(value); setMessage(null) }}>
@@ -107,14 +114,24 @@ export default function Auth() {
 
         <label className="field">
           <Label htmlFor="auth-password">Password</Label>
-          <Input
-            id="auth-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={mode === 'signup' ? 'At least 6 characters' : 'Your password'}
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-          />
+          <div className="pw-wrap">
+            <Input
+              id="auth-password"
+              type={showPw ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={mode === 'signup' ? 'At least 6 characters' : 'Your password'}
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+            />
+            <button
+              type="button"
+              className="pw-toggle"
+              onClick={() => setShowPw((v) => !v)}
+              aria-label={showPw ? 'Hide password' : 'Show password'}
+            >
+              {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
         </label>
 
         {message && (

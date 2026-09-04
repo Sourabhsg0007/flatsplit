@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, Copy, Pencil } from 'lucide-react'
 import { supabase } from '../supabaseClient'
 import ConfirmDialog from './ConfirmDialog'
+import Recurring from './Recurring'
 import { useToast } from './Toast'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -19,7 +20,7 @@ const CURRENCIES = [
 
 const otherMembers = (members, meId) => members.filter((m) => m.id !== meId)
 
-export default function GroupInfo({ group, me, members, groups, onSwitchGroup, onGroupUpdated }) {
+export default function GroupInfo({ group, me, members, groups, onSwitchGroup, onGroupUpdated, onDataChanged }) {
   const [copied, setCopied] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [newName, setNewName] = useState(group.name)
@@ -296,6 +297,8 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
           ))}
         </ul>
       </section>
+
+      <Recurring group={group} me={me} members={members} onGenerated={onDataChanged} />
 
       {groups.length > 1 && (
         <section className="card">
