@@ -382,7 +382,7 @@ export default function App() {
           />
         )}
         {tab === 'personal' && (
-          <Personal me={profile} currency={group.currency} />
+          <Personal me={profile} groups={groups} currency={group.currency} />
         )}
       </main>
 

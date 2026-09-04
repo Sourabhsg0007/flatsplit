@@ -30,8 +30,9 @@ const emptyForm = () => ({
 
 // Private tracker — rows live in personal_expenses which only the
 // signed-in user can read or write (enforced by RLS).
-export default function Personal({ me, currency }) {
+export default function Personal({ me, groups, currency }) {
   const [items, setItems] = useState(null) // null = loading
+  const [groupSpend, setGroupSpend] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [showPersona, setShowPersona] = useState(false)
@@ -53,6 +54,20 @@ export default function Personal({ me, currency }) {
   }, [toast])
 
   useEffect(() => { load() }, [load])
+
+  // My share of expenses across every group I'm in, so the Personal tab can
+  // show a true monthly total (personal spend + group spend).
+  const loadGroupSpend = useCallback(async () => {
+    if (!groups || groups.length === 0) { setGroupSpend([]); return }
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('expense_date, splits:expense_splits(user_id, amount)')
+      .in('group_id', groups.map((g) => g.id))
+    if (error) { toast('error', error.message); return }
+    setGroupSpend(data || [])
+  }, [groups, toast])
+
+  useEffect(() => { loadGroupSpend() }, [loadGroupSpend])
 
   const visible = useMemo(
     () => (items || []).filter((i) => !selectedCategory || i.category === selectedCategory),
@@ -79,6 +94,33 @@ export default function Personal({ me, currency }) {
   const thisMonthTotal = (items || [])
     .filter((i) => i.expense_date.startsWith(thisMonthKey))
     .reduce((sum, i) => sum + Number(i.amount), 0)
+  const thisMonthGroup = (groupSpend || [])
+    .filter((e) => (e.expense_date || '').startsWith(thisMonthKey))
+    .reduce((sum, e) => sum + Number((e.splits || []).find((s) => s.user_id === me.id)?.amount || 0), 0)
+
+  // Personal + group shares combined, one row per month.
+  const monthly = useMemo(() => {
+    const map = new Map()
+    for (const item of items || []) {
+      const key = item.expense_date.slice(0, 7)
+      if (!map.has(key)) {
+        const [y, m] = key.split('-')
+        map.set(key, { key, label: `${MONTH_NAMES[Number(m) - 1]} ${y}`, personal: 0, group: 0 })
+      }
+      map.get(key).personal += Number(item.amount)
+    }
+    for (const e of groupSpend || []) {
+      const mySplit = (e.splits || []).find((s) => s.user_id === me.id)
+      if (!mySplit || !e.expense_date) continue
+      const key = e.expense_date.slice(0, 7)
+      if (!map.has(key)) {
+        const [y, m] = key.split('-')
+        map.set(key, { key, label: `${MONTH_NAMES[Number(m) - 1]} ${y}`, personal: 0, group: 0 })
+      }
+      map.get(key).group += Number(mySplit.amount)
+    }
+    return [...map.values()].sort((a, b) => b.key.localeCompare(a.key))
+  }, [items, groupSpend, me.id])
 
   const categoryData = useMemo(() => {
     const totals = {}
@@ -153,8 +195,8 @@ export default function Personal({ me, currency }) {
     <div className="page">
       <section className="hero-balance personal-hero">
         <span className="hero-label"><Lock size={12} /> Only you can see this</span>
-        <span className="hero-amount">{fmtMoney(thisMonthTotal, currency)}</span>
-        <span className="hero-sub">your spending this month</span>
+        <span className="hero-amount">{fmtMoney(thisMonthTotal + thisMonthGroup, currency)}</span>
+        <span className="hero-sub">your spending this month · Personal + groups</span>
       </section>
 
       {showForm && (
@@ -282,6 +324,24 @@ export default function Personal({ me, currency }) {
             onSelect={setSelectedCategory}
             formatValue={(v) => fmtMoney(v, currency)}
           />
+        </section>
+      )}
+
+      {monthly.length > 0 && (
+        <section className="card">
+          <h2 className="card-title">Month-by-month total</h2>
+          <p className="hint">Your personal spend + your share of expenses in all {groups.length} group{groups.length === 1 ? '' : 's'}.</p>
+          <ul className="ledger">
+            {monthly.map((m) => (
+              <li key={m.key} className="ledger-row">
+                <span className="ledger-name">{m.label}</span>
+                <span className="money">
+                  {fmtMoney(m.personal + m.group, currency)}
+                  <span className="pct">personal {fmtMoney(m.personal, currency)} · groups {fmtMoney(m.group, currency)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
