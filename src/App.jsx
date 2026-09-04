@@ -378,7 +378,7 @@ export default function App() {
             expenses={expenses}
             settlements={settlements}
             currency={group.currency}
-            onProfileUpdated={loadProfileAndGroups}
+            onProfileUpdated={() => { loadProfileAndGroups(); loadGroupData() }}
           />
         )}
         {tab === 'personal' && (
