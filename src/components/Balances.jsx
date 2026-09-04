@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { computeNetBalances, computeTotalSpent, computeTotalGroupExpenses, simplifyDebts, fmtMoney } from '../lib/balances'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 
 export default function Balances({ me, members, expenses, settlements, currency, onGoSettle, onAddExpense }) {
   const [expandedSpender, setExpandedSpender] = useState(null)
+  const [showSpending, setShowSpending] = useState(false)
   const activeMembers = members.filter((m) => !m.left_at)
   const memberIds = members.map((m) => m.id)
   const net = computeNetBalances(memberIds, expenses, settlements)
@@ -50,14 +52,24 @@ export default function Balances({ me, members, expenses, settlements, currency,
       </section>
 
       <section className="card">
-        <h2 className="card-title">Total group expenses</h2>
+        <button
+          type="button"
+          className="month-header clickable-header"
+          onClick={() => setShowSpending((v) => !v)}
+          aria-expanded={showSpending}
+        >
+          <span className="month-title-wrap">
+            <ChevronDown size={16} className={`month-chevron ${showSpending ? '' : 'closed'}`} />
+            <span className="month-title">Spending summary</span>
+          </span>
+          <span className="money">{fmtMoney(totalExpenses, currency)}</span>
+        </button>
+        {showSpending && (
+        <>
         <p className="totals-row">
-          <span className="totals-label">Overall spending</span>
+          <span className="totals-label">Total group expenses</span>
           <span className="money">{fmtMoney(totalExpenses, currency)}</span>
         </p>
-      </section>
-
-      <section className="card">
         <h2 className="card-title">Spent by each person</h2>
         <ul className="ledger">
           {activeMembers.map((m) => {
@@ -107,6 +119,8 @@ export default function Balances({ me, members, expenses, settlements, currency,
             )
           })}
         </ul>
+        </>
+        )}
       </section>
 
       <section className="card">
@@ -147,11 +161,9 @@ export default function Balances({ me, members, expenses, settlements, currency,
             ))}
           </ul>
         )}
-        {!allSettled && (
-          <Button variant="outline" className="block" onClick={onGoSettle}>
-            Record a payment
-          </Button>
-        )}
+        <Button variant="outline" className="block" onClick={onGoSettle}>
+          {allSettled ? 'Settlement history' : 'Record a payment'}
+        </Button>
       </section>
     </div>
   )

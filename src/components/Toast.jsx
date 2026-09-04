@@ -8,12 +8,13 @@ export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
   const idRef = useRef(0)
 
-  const push = useCallback((kind, text) => {
+  // push(kind, text, action?) — action: { label, onClick }
+  const push = useCallback((kind, text, action = null) => {
     const id = ++idRef.current
-    setToasts((prev) => [...prev, { id, kind, text }])
+    setToasts((prev) => [...prev, { id, kind, text, action }])
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id))
-    }, 3500)
+    }, action ? 6000 : 3500)
   }, [])
 
   const dismiss = useCallback((id) => {
@@ -27,6 +28,16 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.kind}`}>
             <span>{t.text}</span>
+            {t.action && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="toast-action"
+                onClick={() => { t.action.onClick(); dismiss(t.id) }}
+              >
+                {t.action.label}
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="toast-dismiss" onClick={() => dismiss(t.id)} aria-label="Dismiss">
               <X size={15} />
             </Button>

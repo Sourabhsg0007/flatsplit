@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#21312A" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1A1F1D" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FlatSplit" />
+    <meta name="application-name" content="FlatSplit" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+    <link rel="mask-icon" href="/icons/icon-512.svg" color="#21312A" />
+    <title>FlatSplit — shared expenses, settled simply</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2321312A'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23F6F5F1' font-family='monospace'>÷</text></svg>" />
+  </head>
+  <body>
+    <script>
+      // Sandboxed preview: storage APIs may be blocked, so shim them in-memory
+      try { window.localStorage.getItem('_t') } catch (e) {
+        var __mem = {};
+        Object.defineProperty(window, 'localStorage', { value: {
+          getItem: function (k) { return k in __mem ? __mem[k] : null },
+          setItem: function (k, v) { __mem[k] = String(v) },
+          removeItem: function (k) { delete __mem[k] },
+          clear: function () { __mem = {} },
+        }});
+      }
+    </script>
+    <div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#c2803d;color:#fff;text-align:center;font:600 11px system-ui;padding:3px 8px;letter-spacing:.04em">DEMO PREVIEW · sample data · signed in as Asha · nothing is saved</div>
+    <div style="height:20px"></div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

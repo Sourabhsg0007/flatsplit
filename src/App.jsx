@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeftRight, BarChart3, Home, List, Moon, Plus, Settings, Sun } from 'lucide-react'
+import { BarChart3, Home, List, Moon, Plus, Settings, Sun, UserRound, Wallet } from 'lucide-react'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth'
+import Splash from './components/Splash'
 import GroupSetup from './components/GroupSetup'
 import Balances from './components/Balances'
 import AddExpense from './components/AddExpense'
@@ -9,12 +10,15 @@ import Activity from './components/Activity'
 import Insights from './components/Insights'
 import Settle from './components/Settle'
 import GroupInfo from './components/GroupInfo'
+import Profile from './components/Profile'
+import Personal from './components/Personal'
 import { useToast } from './components/Toast'
 import { Button } from './components/ui/button'
 import { Skeleton } from './components/ui/skeleton'
 
 export default function App() {
   const [session, setSession] = useState(undefined)
+  const [splashDone, setSplashDone] = useState(false)
   const [profile, setProfile] = useState(null)
   const [groups, setGroups] = useState([])
   const [activeGroupId, setActiveGroupId] = useState(null)
@@ -37,6 +41,12 @@ export default function App() {
   })
   const toast = useToast()
 
+  // Show the branded splash for at least a beat on app start.
+  useEffect(() => {
+    const t = setTimeout(() => setSplashDone(true), 1600)
+    return () => clearTimeout(t)
+  }, [])
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
     window.localStorage.setItem('flatsplit-theme', darkMode ? 'dark' : 'light')
@@ -47,7 +57,7 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const tabParam = params.get('tab')
-    if (tabParam && ['balances', 'activity', 'insights', 'add', 'settle', 'group'].includes(tabParam)) {
+    if (tabParam && ['balances', 'activity', 'insights', 'add', 'settle', 'group', 'profile', 'personal'].includes(tabParam)) {
       setTab(tabParam)
     }
     const joinCode = params.get('join')
@@ -91,7 +101,7 @@ export default function App() {
     const [{ data: mems }, { data: exps }, { data: setts }] = await Promise.all([
       supabase
         .from('group_members')
-        .select('user_id, left_at, profile:profiles(id, full_name, email)')
+        .select('user_id, left_at, profile:profiles(id, full_name, email, upi_id)')
         .eq('group_id', activeGroupId),
       supabase
         .from('expenses')
@@ -115,6 +125,18 @@ export default function App() {
   useEffect(() => {
     loadGroupData()
   }, [loadGroupData])
+
+  // Auto-add any recurring bills that came due (rent, Wi-Fi, ...).
+  // The RPC is idempotent, so calling it on every group load is safe.
+  useEffect(() => {
+    if (!activeGroupId) return
+    supabase.rpc('generate_due_recurring', { gid: activeGroupId }).then(({ data, error }) => {
+      if (!error && data > 0) {
+        toast('success', `${data} recurring bill${data === 1 ? '' : 's'} added automatically.`)
+        loadGroupData()
+      }
+    })
+  }, [activeGroupId, loadGroupData, toast])
 
   // --- realtime: refetch when anyone in the flat changes something ---
   useEffect(() => {
@@ -196,7 +218,11 @@ export default function App() {
   }
 
   // --- render states ---
-  if (session === undefined || (session && loading)) {
+  if (!splashDone || session === undefined) {
+    return <Splash />
+  }
+
+  if (session && loading) {
     return <SkeletonScreen />
   }
 
@@ -227,6 +253,17 @@ export default function App() {
       <header className="topbar">
         <span className="topbar-brand">÷</span>
         <span className="topbar-title">{group.name}</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={tab === 'profile' ? 'topbar-icon active' : 'topbar-icon'}
+          type="button"
+          onClick={() => setTab('profile')}
+          title="Your profile"
+          aria-label="Your profile"
+        >
+          <UserRound size={18} />
+        </Button>
         <Button
           variant="ghost"
           size="icon"
@@ -264,12 +301,12 @@ export default function App() {
         <button className={tab === 'insights' ? 'tab active' : 'tab'} onClick={() => setTab('insights')}>
           <span className="tab-icon"><BarChart3 size={20} /></span>Insights
         </button>
-        <button className={tab === 'settle' ? 'tab active' : 'tab'} onClick={() => setTab('settle')}>
-          <span className="tab-icon"><ArrowLeftRight size={20} /></span>Settle
+        <button className={tab === 'personal' ? 'tab active' : 'tab'} onClick={() => setTab('personal')}>
+          <span className="tab-icon"><Wallet size={20} /></span>Personal
         </button>
       </nav>
 
-      <main className="content">
+      <main className="content" key={tab}>
         {tab === 'balances' && (
           <Balances
             me={profile}
@@ -331,7 +368,21 @@ export default function App() {
             groups={groups}
             onSwitchGroup={(gid) => { setActiveGroupId(gid); setTab('balances') }}
             onGroupUpdated={loadProfileAndGroups}
+            onDataChanged={loadGroupData}
           />
+        )}
+        {tab === 'profile' && (
+          <Profile
+            me={profile}
+            groups={groups}
+            expenses={expenses}
+            settlements={settlements}
+            currency={group.currency}
+            onProfileUpdated={loadProfileAndGroups}
+          />
+        )}
+        {tab === 'personal' && (
+          <Personal me={profile} currency={group.currency} />
         )}
       </main>
 

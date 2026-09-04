@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Download, TrendingDown, TrendingUp } from 'lucide-react'
+import { Download, Eye, EyeOff, TrendingDown, TrendingUp } from 'lucide-react'
 import { computeNetBalances, computeTotalSpent, fmtMoney, simplifyDebts } from '../lib/balances'
+import DonutChart from './DonutChart'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -21,6 +22,9 @@ export default function Insights({ me, members, expenses, settlements, currency 
   const [period, setPeriod] = useState('all')
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [showTotals, setShowTotals] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState(null)
 
   const bounds = useMemo(() => {
     if (period === 'month') return { from: `${today.slice(0, 7)}-01`, to: today }
@@ -49,7 +53,23 @@ export default function Insights({ me, members, expenses, settlements, currency 
     [filteredExpenses]
   )
   const maxMonth = Math.max(...monthly.map(([, value]) => value), 1)
-  const maxCategory = Math.max(...categories.map(([, value]) => value), 1)
+  // (category shares are now drawn by the interactive donut)
+  const categoryDrilldown = useMemo(
+    () => (selectedCategory
+      ? filteredExpenses
+          .filter((e) => (e.category || 'Other') === selectedCategory)
+          .sort((a, b) => Number(b.amount) - Number(a.amount))
+      : []),
+    [filteredExpenses, selectedCategory]
+  )
+  const monthDrilldown = useMemo(
+    () => (selectedMonth
+      ? filteredExpenses
+          .filter((e) => e.expense_date?.startsWith(selectedMonth))
+          .sort((a, b) => Number(b.amount) - Number(a.amount))
+      : []),
+    [filteredExpenses, selectedMonth]
+  )
   const averageMonthly = monthly.length ? total / monthly.length : 0
   const topCategory = categories[0]
   const yourNet = net[me.id] ?? 0
@@ -136,8 +156,28 @@ export default function Insights({ me, members, expenses, settlements, currency 
       ) : (
         <>
           <section className="insights-summary">
-            <StatCard label="Total spent" value={fmtMoney(total, currency)} detail={`${filteredExpenses.length} expense${filteredExpenses.length === 1 ? '' : 's'}`} />
-            <StatCard label="Average per month" value={fmtMoney(averageMonthly, currency)} detail={`${monthly.length || 0} month${monthly.length === 1 ? '' : 's'} with spending`} />
+            <button
+              type="button"
+              className="insight-stat-card stat-reveal"
+              onClick={() => setShowTotals((v) => !v)}
+              aria-pressed={showTotals}
+              title={showTotals ? 'Hide totals' : 'Show totals'}
+            >
+              <span className="insight-stat-label">Total spent {showTotals ? <EyeOff size={12} /> : <Eye size={12} />}</span>
+              <strong className="insight-stat-value">{showTotals ? fmtMoney(total, currency) : '••••••'}</strong>
+              <span className="insight-stat-detail">{showTotals ? `${filteredExpenses.length} expense${filteredExpenses.length === 1 ? '' : 's'}` : 'Tap to reveal'}</span>
+            </button>
+            <button
+              type="button"
+              className="insight-stat-card stat-reveal"
+              onClick={() => setShowTotals((v) => !v)}
+              aria-pressed={showTotals}
+              title={showTotals ? 'Hide totals' : 'Show totals'}
+            >
+              <span className="insight-stat-label">Average per month {showTotals ? <EyeOff size={12} /> : <Eye size={12} />}</span>
+              <strong className="insight-stat-value">{showTotals ? fmtMoney(averageMonthly, currency) : '••••••'}</strong>
+              <span className="insight-stat-detail">{showTotals ? `${monthly.length || 0} month${monthly.length === 1 ? '' : 's'} with spending` : 'Tap to reveal'}</span>
+            </button>
             <StatCard label="Top category" value={topCategory ? topCategory[0] : '—'} detail={topCategory ? fmtMoney(topCategory[1], currency) : 'No categories'} />
             <StatCard label="Your balance" value={signedMoney(yourNet, currency)} detail={`paid ${fmtMoney(spent[me.id] ?? 0, currency)} · ${percent(spent[me.id] ?? 0, total)}%`} />
           </section>
@@ -148,17 +188,46 @@ export default function Insights({ me, members, expenses, settlements, currency 
                 <h2 className="card-title">Monthly spending</h2>
                 <p className="hint">Actual totals by month, not just relative bars.</p>
               </div>
-              <span className="money">{fmtMoney(total, currency)}</span>
+              <button
+                type="button"
+                className="money money-reveal"
+                onClick={() => setShowTotals((v) => !v)}
+                title={showTotals ? 'Hide total' : 'Show total'}
+              >
+                {showTotals ? fmtMoney(total, currency) : '••••••'}
+              </button>
             </div>
+            <p className="hint">Tap a month to see its expenses.</p>
             <div className="insight-month-list">
               {monthly.length === 0 ? <p className="empty">No dated expenses in this period.</p> : monthly.map(([month, value]) => (
-                <div className="insight-month-row" key={month}>
+                <button
+                  type="button"
+                  className={`insight-month-row clickable-bar ${selectedMonth === month ? 'active' : ''}`}
+                  key={month}
+                  onClick={() => setSelectedMonth(selectedMonth === month ? null : month)}
+                >
                   <span className="insight-month-label">{formatMonth(month)}</span>
                   <span className="insight-bar-track"><span className="insight-bar" style={{ width: `${(value / maxMonth) * 100}%` }} /></span>
                   <span className="money">{fmtMoney(value, currency)}</span>
-                </div>
+                </button>
               ))}
             </div>
+            {selectedMonth && (
+              <div className="drilldown">
+                <div className="drilldown-header">
+                  <strong>{formatMonth(selectedMonth)}</strong>
+                  <span>{monthDrilldown.length} expense{monthDrilldown.length === 1 ? '' : 's'}</span>
+                </div>
+                <ul className="drilldown-list">
+                  {monthDrilldown.map((e) => (
+                    <li key={e.id}>
+                      <span className="drilldown-desc">{e.description}<small>{formatDate(e.expense_date)} · {nameOf(e.paid_by)}</small></span>
+                      <span className="money">{fmtMoney(e.amount, currency)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
 
           <div className="insights-columns">
@@ -170,15 +239,30 @@ export default function Insights({ me, members, expenses, settlements, currency 
                 </div>
               </div>
               {categories.length === 0 ? <p className="empty">Nothing categorised yet.</p> : (
-                <ul className="insight-rows">
-                  {categories.map(([category, value]) => (
-                    <li key={category} className="insight-row">
-                      <span className="insight-label">{category}</span>
-                      <span className="insight-bar-track"><span className="insight-bar" style={{ width: `${(value / maxCategory) * 100}%` }} /></span>
-                      <span className="insight-value"><strong>{fmtMoney(value, currency)}</strong><small>{percent(value, total)}%</small></span>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <DonutChart
+                    data={categories.map(([label, value]) => ({ label, value }))}
+                    selected={selectedCategory}
+                    onSelect={setSelectedCategory}
+                    formatValue={(v) => fmtMoney(v, currency)}
+                  />
+                  {selectedCategory && (
+                    <div className="drilldown">
+                      <div className="drilldown-header">
+                        <strong>{selectedCategory}</strong>
+                        <span>{categoryDrilldown.length} expense{categoryDrilldown.length === 1 ? '' : 's'}</span>
+                      </div>
+                      <ul className="drilldown-list">
+                        {categoryDrilldown.map((e) => (
+                          <li key={e.id}>
+                            <span className="drilldown-desc">{e.description}<small>{formatDate(e.expense_date)} · {nameOf(e.paid_by)}</small></span>
+                            <span className="money">{fmtMoney(e.amount, currency)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
               )}
             </section>
 
