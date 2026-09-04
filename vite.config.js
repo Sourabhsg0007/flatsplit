@@ -62,6 +62,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,json}'],
+        // pdf.js is ~2 MB and only loaded on demand (statement import) —
+        // precaching it breaks Workbox's 2 MiB asset limit and would slow
+        // every first visit, so fetch it from the network when needed.
+        globIgnores: ['**/pdfStatement-*.js'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
