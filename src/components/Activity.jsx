@@ -6,6 +6,7 @@ import ConfirmDialog from './ConfirmDialog'
 import ExpenseSocial from './ExpenseSocial'
 import { useToast } from './Toast'
 import { Badge } from './ui/badge'
+import CategoryChip from './CategoryChip'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
@@ -175,6 +176,7 @@ export default function Activity({ me, members, expenses, settlements, currency,
     const isOpen = expanded === e.id
     return (
       <li key={`e-${e.id}`} className={`activity-row ${isOpen ? 'open' : ''}`}>
+        <CategoryChip category={e.category} />
         <div
           className="activity-main clickable"
           onClick={() => setExpanded(isOpen ? null : e.id)}

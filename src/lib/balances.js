@@ -130,6 +130,18 @@ export function round2(n) {
   return Math.round(n * 100) / 100
 }
 
+// Compact money for fixed-size UI boxes: full paise below ₹1,000, whole
+// rupees above — so even crore-scale values stay short and never break
+// a constant-width card. Indian digit grouping (1,23,456) throughout.
+export function fmtMoneyShort(n, currency = '₹') {
+  const v = Math.abs(Number(n) || 0)
+  const decimals = v >= 1000 ? 0 : 2
+  return `${currency}${v.toLocaleString('en-IN', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })}`
+}
+
 export function fmtMoney(n, currency = '₹') {
   const v = Math.abs(Number(n) || 0)
   return `${currency}${v.toLocaleString('en-IN', {

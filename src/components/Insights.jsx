@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Download, Eye, EyeOff, TrendingDown, TrendingUp } from 'lucide-react'
-import { computeNetBalances, computeTotalSpent, fmtMoney, simplifyDebts } from '../lib/balances'
+import { computeNetBalances, computeTotalSpent, fmtMoney, fmtMoneyShort, simplifyDebts } from '../lib/balances'
 import DonutChart from './DonutChart'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
@@ -164,7 +164,7 @@ export default function Insights({ me, members, expenses, settlements, currency 
               title={showTotals ? 'Hide totals' : 'Show totals'}
             >
               <span className="insight-stat-label">Total spent {showTotals ? <EyeOff size={12} /> : <Eye size={12} />}</span>
-              <strong className="insight-stat-value">{showTotals ? fmtMoney(total, currency) : '••••••'}</strong>
+              <strong className="insight-stat-value">{showTotals ? fmtMoneyShort(total, currency) : '••••••'}</strong>
               <span className="insight-stat-detail">{showTotals ? `${filteredExpenses.length} expense${filteredExpenses.length === 1 ? '' : 's'}` : 'Tap to reveal'}</span>
             </button>
             <button
@@ -175,7 +175,7 @@ export default function Insights({ me, members, expenses, settlements, currency 
               title={showTotals ? 'Hide totals' : 'Show totals'}
             >
               <span className="insight-stat-label">Average per month {showTotals ? <EyeOff size={12} /> : <Eye size={12} />}</span>
-              <strong className="insight-stat-value">{showTotals ? fmtMoney(averageMonthly, currency) : '••••••'}</strong>
+              <strong className="insight-stat-value">{showTotals ? fmtMoneyShort(averageMonthly, currency) : '••••••'}</strong>
               <span className="insight-stat-detail">{showTotals ? `${monthly.length || 0} month${monthly.length === 1 ? '' : 's'} with spending` : 'Tap to reveal'}</span>
             </button>
             <StatCard label="Top category" value={topCategory ? topCategory[0] : '—'} detail={topCategory ? fmtMoney(topCategory[1], currency) : 'No categories'} />
@@ -194,7 +194,7 @@ export default function Insights({ me, members, expenses, settlements, currency 
                 onClick={() => setShowTotals((v) => !v)}
                 title={showTotals ? 'Hide total' : 'Show total'}
               >
-                {showTotals ? fmtMoney(total, currency) : '••••••'}
+                {showTotals ? fmtMoneyShort(total, currency) : '••••••'}
               </button>
             </div>
             <p className="hint">Tap a month to see its expenses.</p>

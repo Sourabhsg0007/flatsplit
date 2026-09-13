@@ -1,0 +1,1281 @@
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/CHANGELOG.md b/CHANGELOG.md
+--- a/CHANGELOG.md	2026-09-04 08:44:14.000000000 +0000
++++ b/CHANGELOG.md	2026-09-13 08:56:40.248844299 +0000
+@@ -3,6 +3,72 @@
+ All notable changes to FlatSplit are documented here.
+ Format loosely follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
+ 
++## [2.2.0] — 2026-09-05
++
++### Added
++- **Native iOS & Android apps (Capacitor)** — `android/` and `ios/` native
++  projects, `capacitor.config.json`, and npm scripts (`cap:sync`,
++  `cap:android`, `cap:ios`). Full build + store-submission guide in
++  `docs/MOBILE_APPS.md` (signing, icons, listings, privacy forms, and the
++  Google-OAuth-in-webview caveat).
++- **Avatars** — every person gets an initials avatar with a stable
++  per-person color (net balances, settle suggestions).
++- **Category icon chips** — each expense row leads with its category's icon
++  in a tinted chip (Activity + Personal), making lists scannable.
++- `docs/DESIGN.md` — the design language, inspirations from Splitwise /
++  Tricount / Settle Up research, and mobile-native rules.
++
++### Changed
++- **Activity rows redesigned for readability** — the meta line (date · payer
++  · your share) sits in a small rounded pill box; description-to-category-tag
++  font ratio is exactly 1.5:1 (1.05rem : 0.7rem) so the expense name clearly
++  leads.
++- **Tab bar active state, reimagined** — the active tab's icon gets a filled
++  theme-color circle (pine with white icon in light mode; mint with dark icon
++  in dark mode) that lifts off the bar with a springy 3D pop and shadow;
++  pressing any tab pushes the button in under your finger. Respects
++  prefers-reduced-motion.
++- **Bounding sweep completed across every screen** — top bar, group
++  settings (name/invite code), comments (bodies wrap, authors truncate),
++  toasts, donut chart center (JS-truncated with auto-shrink for long values)
++  and legend, add-expense split rows, select triggers, profile name/email,
++  and a global no-horizontal-scroll guard.
++- **App-wide bounding system ("text yields, numbers hold")** — every row and
++  card bounds its content: names/descriptions flex and ellipsize (2-line
++  clamp for expense descriptions), amounts never wrap and use tabular
++  numerals so columns align; the hero amount scales fluidly; Insights
++  overview stats use the compact lakh-proof format. No value, however long,
++  can push or break neighbouring UI. Documented in docs/DESIGN.md.
++- **Personal: month-by-month totals are now fixed-size boxes** — a grid of
++  identical cards (label / combined total / personal · groups breakdown)
++  instead of text rows. Amounts use a lakh-proof compact format
++  (`fmtMoneyShort`): paise shown under ₹1,000, whole rupees above, Indian
++  digit grouping — so even ₹1,23,45,679 fits without breaking the layout.
++- **Home screen simplified** — the group spending totals card was removed
++  from Balances; home is now: your balance → net balances (with avatars) →
++  who pays whom. Totals live in Insights behind tap-to-reveal.
++- Settle suggestions show payer → payee avatars, and amounts are colored
++  green/red relative to you (owed / you pay).
++- **Mobile-native hardening:** ≥52px tab targets and ≥40px buttons, 16px
++  inputs on small screens (no iOS focus zoom), transparent tap highlight,
++  `touch-action: manipulation`, no overscroll chaining, safe-area gutters
++  on notched devices.
++
++## [2.1.0] — 2026-09-05
++
++### Added
++- **Personal tab: true monthly total** — the hero now shows personal spend
++  **plus your share of expenses across all your groups**, and a new
++  "Month-by-month total" card breaks every month into personal · groups.
++
++### Changed
++- Profile updates now also refresh group data immediately.
++- PWA: the on-demand pdf.js chunk is excluded from the service-worker precache
++  (it exceeded Workbox's limit and shouldn't slow first visits); it loads from
++  the network when a PDF is imported.
++- Demo mock: `.in()` filter support so the combined-spend feature works in the
++  offline preview.
++
+ ## [2.0.0] — 2026-08-31
+ 
+ > **Upgrade note:** run `supabase/migration_v4.sql` once in the Supabase SQL Editor
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/README.md b/README.md
+--- a/README.md	2026-09-04 08:44:14.000000000 +0000
++++ b/README.md	2026-09-13 08:10:19.742881413 +0000
+@@ -1,5 +1,7 @@
+ # FlatSplit
+ 
++> 📱 **Native apps:** see [docs/MOBILE_APPS.md](docs/MOBILE_APPS.md) to build and ship the iOS/Android apps. Design language: [docs/DESIGN.md](docs/DESIGN.md).
++
+ A Splitwise-style web app for you and your flatmates. Add daily expenses, split them
+ equally / by exact amounts / by percentages / by shares, see who owes whom, and settle
+ up whenever you like. Works in any browser on any device, syncs live, and runs entirely
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/capacitor.config.json b/capacitor.config.json
+--- a/capacitor.config.json	1970-01-01 00:00:00.000000000 +0000
++++ b/capacitor.config.json	2026-09-13 08:08:54.229407083 +0000
+@@ -0,0 +1,15 @@
++{
++  "appId": "app.flatsplit.expenses",
++  "appName": "FlatSplit",
++  "webDir": "dist",
++  "backgroundColor": "#21312A",
++  "server": {
++    "androidScheme": "https"
++  },
++  "ios": {
++    "contentInset": "automatic"
++  },
++  "android": {
++    "allowMixedContent": false
++  }
++}
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/docs/DESIGN.md b/docs/DESIGN.md
+--- a/docs/DESIGN.md	1970-01-01 00:00:00.000000000 +0000
++++ b/docs/DESIGN.md	2026-09-13 08:56:40.265430178 +0000
+@@ -0,0 +1,108 @@
++# FlatSplit design language (v3)
++
++This documents the UI decisions so future changes stay coherent. The v3
++facelift studied Splitwise, Tricount, and Settle Up and adopted the patterns
++those apps converged on — while keeping FlatSplit's own identity.
++
++## What we learned from the category leaders
++
++1. **Color is the fastest signifier for money direction.** Splitwise's single
++   strongest pattern: green = you're owed, red = you owe. Users decode it with
++   zero learning. → FlatSplit colors every directional amount: `.pos` green,
++   `.neg` red/clay, including settle suggestions relative to *you*.
++2. **People-first: show faces.** Tricount puts participant avatars in headers;
++   Splitwise's redesigns emphasize per-person rows. → FlatSplit renders an
++   initials avatar with a stable per-person color everywhere a person appears
++   in a money context (net balances, settle suggestions).
++3. **Category icons beat text labels.** Every redesign study replaces plain
++   category text with icon chips — expenses become scannable. → Each of the
++   9 categories has a fixed icon + tint (`src/lib/categoryMeta.js`), shown as
++   a leading chip on Activity and Personal rows.
++4. **The home screen is balances, not a dashboard.** Splitwise's own v5
++   simplified home to "all your balances in one place". → FlatSplit's home is:
++   your balance hero → net balances → who pays whom. Group spending totals
++   were removed from home entirely (they live in Insights, behind
++   tap-to-reveal, where analysis belongs).
++5. **One-handed reach.** Floating central + button in the tab bar (kept),
++   44px+ touch targets everywhere (added).
++
++## FlatSplit's own identity (what we deliberately kept unique)
++
++- **The ÷ mark** as logo, splash, and watermark — division as brand.
++- **Pine + paper palette** (`#2E5E4E` on warm off-whites) instead of the
++  teal/purple gradients common in fintech.
++- **Space Grotesk for money** — amounts get their own typeface.
++- **Privacy as a visible feature**: totals hidden behind tap-to-reveal,
++  on-device statement parsing with the shield note, RLS-backed Personal tab.
++
++## Primitives
++
++| Primitive | File | Rule |
++|---|---|---|
++| Avatar | `src/components/Avatar.jsx` | Initials + deterministic color from name hash (8-color palette, WCAG-checked fg). Same person = same color everywhere, forever. |
++| CategoryChip | `src/components/CategoryChip.jsx` | 34px rounded square, icon at 52% size, 14% tint background. |
++| Money | `.money` class | Space Grotesk; `.pos` / `.neg` only when direction matters to *the viewer*. |
++
++## Mobile-native rules (iOS/Android/web parity)
++
++- `viewport-fit=cover` + `env(safe-area-inset-*)` on top bar, tab bar, content
++  gutters, FAB — survives notches and gesture bars.
++- Inputs are ≥16px on small screens (blocks iOS focus auto-zoom).
++- `touch-action: manipulation` + transparent tap highlight on all controls
++  (kills the 300ms delay feel and gray flash).
++- `overscroll-behavior-y: none` (no rubber-band scroll chaining in the shell).
++- Tab bar items ≥52px, all buttons ≥40px hit area (Apple HIG minimum is 44pt
++  for primary controls; our tab targets exceed it).
++- Layout uses `100dvh` (not `vh`) so mobile URL bars don't cause jumps.
++- Animations respect `prefers-reduced-motion` globally.
++
++## The bounding system — "text yields, numbers hold"
++
++Every row and card is a bounded container. The invariant: **a change in any
++value can never move, wrap, or break its siblings.**
++
++- **Text cells** (names, descriptions, labels, meta) are the flexible part:
++  `flex: 1; min-width: 0` with single-line ellipsis — except expense
++  descriptions, which get a 2-line clamp before truncating.
++- **Number cells** (`.money`) are the rigid part: `flex: none;
++  white-space: nowrap; font-variant-numeric: tabular-nums`. Money is never
++  truncated (you can't cut digits off an amount) — instead the text beside it
++  yields. Tabular numerals make every digit equal-width so columns of amounts
++  align perfectly.
++- **Overview numbers** (Insights stats, month boxes, monthly headers) use
++  `fmtMoneyShort`: paise under ₹1,000, whole rupees above, Indian grouping —
++  bounded length even at crore scale (≤12 chars). Transaction-level amounts
++  keep full paise precision everywhere money actually moves.
++- **The hero amount** scales fluidly (`clamp(1.55rem, 8.5vw, 2.3rem)`)
++  instead of overflowing.
++- Fixed-footprint cards (`.month-box` 104px, `.insight-stat-card` ≥92px) hold
++  their size regardless of content.
++
++When adding any new UI: put text in a yielding cell, money in a holding cell,
++and give the container `min-width: 0`. That's the whole rule.
++
++### Sweep coverage (audited 2026-09-05)
++
++Every surface was audited and bounded: top bar title · card title rows ·
++group name + invite code · member lists · net balances · settle suggestions
++& history · comments (author truncates, body wraps — long unbroken strings
++break instead of overflowing) · toasts (message wraps, action buttons hold) ·
++donut center (JS-truncated: SVG text has no CSS ellipsis; value auto-shrinks
++past 10 chars) · donut legend · add-expense split rows · select triggers
++(chosen value ellipsizes) · profile name/email · import preview rows ·
++Insights stats · month boxes · hero amounts. Plus a global guard:
++`.content { overflow-x: hidden }` — nothing can leak a horizontal scrollbar.
++
++## Activity row anatomy & tab bar states (v3.1)
++
++- Expense row: `[category chip] [description 1.05rem/550] → [meta pill] → money`.
++  The description-to-tag ratio is fixed at **1.5 : 1** (1.05rem : 0.7rem) —
++  keep this ratio if either size changes.
++- The meta pill (date · payer · your share) is a bordered `999px` pill on
++  `--paper`, self-start so it hugs its content, bounded by the row.
++- Tab bar: inactive = soft ink; active = 40px filled circle behind the icon
++  (`--pine` + white icon in light; `#7FB8A3` + near-black icon in dark),
++  lifted `translateY(-7px) scale(1.06)` with a colored shadow — the "popped
++  out" 3D state. `:active` presses the circle back in (`scale(0.9)`), spring
++  curve `cubic-bezier(0.34, 1.56, 0.64, 1)`. All motion is disabled under
++  `prefers-reduced-motion`.
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/docs/MOBILE_APPS.md b/docs/MOBILE_APPS.md
+--- a/docs/MOBILE_APPS.md	1970-01-01 00:00:00.000000000 +0000
++++ b/docs/MOBILE_APPS.md	2026-09-13 08:09:42.171777387 +0000
+@@ -0,0 +1,130 @@
++# FlatSplit — iOS & Android apps (Capacitor)
++
++FlatSplit ships to the App Store and Play Store using **Capacitor**: the same
++React build runs inside a native shell. One codebase, three targets
++(web / iOS / Android). The `android/` and `ios/` folders in this repo are the
++native projects — commit them to git.
++
++---
++
++## How it fits together
++
++```
++src/  ──vite build──▶  dist/  ──npx cap sync──▶  android/ + ios/  ──▶ stores
++```
++
++`npx cap sync` copies `dist/` into both native projects and updates native
++plugins. You never edit the copied web assets directly.
++
++## Prerequisites
++
++| Target  | You need                                                            |
++|---------|---------------------------------------------------------------------|
++| Android | Android Studio (any OS). Free Play Console account: $25 once.       |
++| iOS     | A Mac with Xcode 15+. Apple Developer Program: $99/year.            |
++
++## Everyday commands
++
++```bash
++npm run cap:sync       # build web + sync into both native projects
++npm run cap:android    # build + sync + open Android Studio
++npm run cap:ios        # build + sync + open Xcode
++```
++
++After any web code change, run `npm run cap:sync` before rebuilding the
++native app — otherwise the shell keeps serving the old bundle.
++
++---
++
++## First Android build (10 minutes)
++
++1. `npm run cap:android` — Android Studio opens the `android/` project.
++2. Let Gradle finish syncing (bottom status bar).
++3. Pick a device/emulator → **Run ▶**. FlatSplit boots natively.
++
++### Release build for the Play Store
++1. **Build → Generate Signed Bundle / APK → Android App Bundle**.
++2. Create a keystore when prompted (**KEEP THIS FILE + PASSWORDS SAFE FOREVER**
++   — losing it means you can never update the app; back it up outside the repo,
++   never commit it).
++3. Output: `android/app/release/app-release.aab`.
++4. [play.google.com/console](https://play.google.com/console) → Create app →
++   fill the listing (see checklist below) → Production → upload the `.aab` →
++   roll out. First review typically takes 1–7 days.
++
++## First iOS build (10 minutes, Mac only)
++
++1. `npm run cap:ios` — Xcode opens `ios/App/App.xcworkspace`.
++2. Select the **App** target → *Signing & Capabilities* → choose your Team
++   (your Apple Developer account). Xcode manages certificates automatically.
++3. Pick a simulator or plugged-in iPhone → **Run ▶**.
++
++### Release build for the App Store
++1. Select **Any iOS Device (arm64)** as destination.
++2. **Product → Archive** → *Distribute App* → App Store Connect → Upload.
++3. [appstoreconnect.apple.com](https://appstoreconnect.apple.com) → My Apps →
++   New App (bundle id `app.flatsplit.expenses`) → fill the listing → pick the
++   uploaded build → Submit for Review. Typically 1–3 days.
++
++---
++
++## App icons & splash screens
++
++Generate every required size from one image pair:
++
++```bash
++npm i -D @capacitor/assets
++# put icon.png (1024×1024) and splash.png (2732×2732) in ./resources
++npx capacitor-assets generate
++```
++
++Use the ÷ brand mark on the pine background (`#21312A`) — matching the
++in-app splash so launch feels seamless.
++
++## Store listing checklist (both stores)
++
++- **Name:** FlatSplit — Split & Settle
++- **Short description:** Shared expenses for flatmates — split, settle via UPI, done.
++- **Screenshots:** phone screenshots of Balances, Activity, Insights, Personal,
++  Settle-with-UPI. (Take them in the simulator/emulator; both stores require
++  specific sizes — the consoles list them.)
++- **Privacy policy URL:** required by both stores. Host a simple page (a
++  GitHub Pages page works) stating: account email + display name stored via
++  Supabase; expense data stored to provide the service; bank statements are
++  processed on-device and never uploaded; no ads; no data sold.
++- **Data safety / App privacy forms:** declare email + name (account),
++  user-generated content (expenses). Bank statements: not collected
++  (on-device only) — this is true and a genuinely strong privacy story.
++- **Category:** Finance.
++
++---
++
++## Things to know (read before v1 submission)
++
++### Google sign-in inside the native app
++Google **blocks OAuth inside plain webviews** ("disallowed_useragent"), so the
++*Continue with Google* button may fail in the native shells. Email/password
++works natively out of the box. Options, in order of effort:
++1. **v1: rely on email/password** in the native apps (the button can stay —
++   web users still use it).
++2. Later: add `@capacitor/browser` and complete OAuth in the system browser
++   with a deep-link redirect back into the app (Supabase supports this via
++   a custom URL scheme redirect). Happy to wire this when you want it.
++
++### UPI deep links
++Work **better** natively than on the web — Android resolves `tez://`,
++`phonepe://` etc. straight into the apps. No changes needed.
++
++### Updating the app after web changes
++Store apps bundle the web build, so shipping a change means: bump the version
++in `package.json`, `npm run cap:sync`, rebuild/rearchive, upload to both
++consoles. (The Vercel web app keeps updating instantly as before.)
++
++### What's intentionally not in the native projects' git
++`android/app/src/main/assets/public/` and `ios/App/App/public/` are the copied
++web build — regenerated by every `cap sync`. They're gitignored; don't commit
++them. Your signing keystore must also never be committed.
++
++### PDF import in native apps
++Works — pdf.js runs inside the shell webview like any browser. The lazy-loaded
++chunk is bundled with the app, so it works offline too.
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/docs/v2.2.0-since-github.patch b/docs/v2.2.0-since-github.patch
+--- a/docs/v2.2.0-since-github.patch	1970-01-01 00:00:00.000000000 +0000
++++ b/docs/v2.2.0-since-github.patch	2026-09-13 08:59:44.682284021 +0000
+@@ -0,0 +1,152 @@
++diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/CHANGELOG.md b/CHANGELOG.md
++--- a/CHANGELOG.md	2026-09-04 08:44:14.000000000 +0000
+++++ b/CHANGELOG.md	2026-09-13 08:56:40.248844299 +0000
++@@ -3,6 +3,72 @@
++ All notable changes to FlatSplit are documented here.
++ Format loosely follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
++ 
+++## [2.2.0] — 2026-09-05
+++
+++### Added
+++- **Native iOS & Android apps (Capacitor)** — `android/` and `ios/` native
+++  projects, `capacitor.config.json`, and npm scripts (`cap:sync`,
+++  `cap:android`, `cap:ios`). Full build + store-submission guide in
+++  `docs/MOBILE_APPS.md` (signing, icons, listings, privacy forms, and the
+++  Google-OAuth-in-webview caveat).
+++- **Avatars** — every person gets an initials avatar with a stable
+++  per-person color (net balances, settle suggestions).
+++- **Category icon chips** — each expense row leads with its category's icon
+++  in a tinted chip (Activity + Personal), making lists scannable.
+++- `docs/DESIGN.md` — the design language, inspirations from Splitwise /
+++  Tricount / Settle Up research, and mobile-native rules.
+++
+++### Changed
+++- **Activity rows redesigned for readability** — the meta line (date · payer
+++  · your share) sits in a small rounded pill box; description-to-category-tag
+++  font ratio is exactly 1.5:1 (1.05rem : 0.7rem) so the expense name clearly
+++  leads.
+++- **Tab bar active state, reimagined** — the active tab's icon gets a filled
+++  theme-color circle (pine with white icon in light mode; mint with dark icon
+++  in dark mode) that lifts off the bar with a springy 3D pop and shadow;
+++  pressing any tab pushes the button in under your finger. Respects
+++  prefers-reduced-motion.
+++- **Bounding sweep completed across every screen** — top bar, group
+++  settings (name/invite code), comments (bodies wrap, authors truncate),
+++  toasts, donut chart center (JS-truncated with auto-shrink for long values)
+++  and legend, add-expense split rows, select triggers, profile name/email,
+++  and a global no-horizontal-scroll guard.
+++- **App-wide bounding system ("text yields, numbers hold")** — every row and
+++  card bounds its content: names/descriptions flex and ellipsize (2-line
+++  clamp for expense descriptions), amounts never wrap and use tabular
+++  numerals so columns align; the hero amount scales fluidly; Insights
+++  overview stats use the compact lakh-proof format. No value, however long,
+++  can push or break neighbouring UI. Documented in docs/DESIGN.md.
+++- **Personal: month-by-month totals are now fixed-size boxes** — a grid of
+++  identical cards (label / combined total / personal · groups breakdown)
+++  instead of text rows. Amounts use a lakh-proof compact format
+++  (`fmtMoneyShort`): paise shown under ₹1,000, whole rupees above, Indian
+++  digit grouping — so even ₹1,23,45,679 fits without breaking the layout.
+++- **Home screen simplified** — the group spending totals card was removed
+++  from Balances; home is now: your balance → net balances (with avatars) →
+++  who pays whom. Totals live in Insights behind tap-to-reveal.
+++- Settle suggestions show payer → payee avatars, and amounts are colored
+++  green/red relative to you (owed / you pay).
+++- **Mobile-native hardening:** ≥52px tab targets and ≥40px buttons, 16px
+++  inputs on small screens (no iOS focus zoom), transparent tap highlight,
+++  `touch-action: manipulation`, no overscroll chaining, safe-area gutters
+++  on notched devices.
+++
+++## [2.1.0] — 2026-09-05
+++
+++### Added
+++- **Personal tab: true monthly total** — the hero now shows personal spend
+++  **plus your share of expenses across all your groups**, and a new
+++  "Month-by-month total" card breaks every month into personal · groups.
+++
+++### Changed
+++- Profile updates now also refresh group data immediately.
+++- PWA: the on-demand pdf.js chunk is excluded from the service-worker precache
+++  (it exceeded Workbox's limit and shouldn't slow first visits); it loads from
+++  the network when a PDF is imported.
+++- Demo mock: `.in()` filter support so the combined-spend feature works in the
+++  offline preview.
+++
++ ## [2.0.0] — 2026-08-31
++ 
++ > **Upgrade note:** run `supabase/migration_v4.sql` once in the Supabase SQL Editor
++diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/README.md b/README.md
++--- a/README.md	2026-09-04 08:44:14.000000000 +0000
+++++ b/README.md	2026-09-13 08:10:19.742881413 +0000
++@@ -1,5 +1,7 @@
++ # FlatSplit
++ 
+++> 📱 **Native apps:** see [docs/MOBILE_APPS.md](docs/MOBILE_APPS.md) to build and ship the iOS/Android apps. Design language: [docs/DESIGN.md](docs/DESIGN.md).
+++
++ A Splitwise-style web app for you and your flatmates. Add daily expenses, split them
++ equally / by exact amounts / by percentages / by shares, see who owes whom, and settle
++ up whenever you like. Works in any browser on any device, syncs live, and runs entirely
++diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/capacitor.config.json b/capacitor.config.json
++--- a/capacitor.config.json	1970-01-01 00:00:00.000000000 +0000
+++++ b/capacitor.config.json	2026-09-13 08:08:54.229407083 +0000
++@@ -0,0 +1,15 @@
+++{
+++  "appId": "app.flatsplit.expenses",
+++  "appName": "FlatSplit",
+++  "webDir": "dist",
+++  "backgroundColor": "#21312A",
+++  "server": {
+++    "androidScheme": "https"
+++  },
+++  "ios": {
+++    "contentInset": "automatic"
+++  },
+++  "android": {
+++    "allowMixedContent": false
+++  }
+++}
++diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/docs/DESIGN.md b/docs/DESIGN.md
++--- a/docs/DESIGN.md	1970-01-01 00:00:00.000000000 +0000
+++++ b/docs/DESIGN.md	2026-09-13 08:56:40.265430178 +0000
++@@ -0,0 +1,108 @@
+++# FlatSplit design language (v3)
+++
+++This documents the UI decisions so future changes stay coherent. The v3
+++facelift studied Splitwise, Tricount, and Settle Up and adopted the patterns
+++those apps converged on — while keeping FlatSplit's own identity.
+++
+++## What we learned from the category leaders
+++
+++1. **Color is the fastest signifier for money direction.** Splitwise's single
+++   strongest pattern: green = you're owed, red = you owe. Users decode it with
+++   zero learning. → FlatSplit colors every directional amount: `.pos` green,
+++   `.neg` red/clay, including settle suggestions relative to *you*.
+++2. **People-first: show faces.** Tricount puts participant avatars in headers;
+++   Splitwise's redesigns emphasize per-person rows. → FlatSplit renders an
+++   initials avatar with a stable per-person color everywhere a person appears
+++   in a money context (net balances, settle suggestions).
+++3. **Category icons beat text labels.** Every redesign study replaces plain
+++   category text with icon chips — expenses become scannable. → Each of the
+++   9 categories has a fixed icon + tint (`src/lib/categoryMeta.js`), shown as
+++   a leading chip on Activity and Personal rows.
+++4. **The home screen is balances, not a dashboard.** Splitwise's own v5
+++   simplified home to "all your balances in one place". → FlatSplit's home is:
+++   your balance hero → net balances → who pays whom. Group spending totals
+++   were removed from home entirely (they live in Insights, behind
+++   tap-to-reveal, where analysis belongs).
+++5. **One-handed reach.** Floating central + button in the tab bar (kept),
+++   44px+ touch targets everywhere (added).
+++
+++## FlatSplit's own identity (what we deliberately kept unique)
+++
+++- **The ÷ mark** as logo, splash, and watermark — division as brand.
+++- **Pine + paper palette** (`#2E5E4E` on warm off-whites) instead of the
+++  teal/purple gradients common in fintech.
+++- **Space Grotesk for money** — amounts get their own typeface.
+++- **Privacy as a visible feature**: totals hidden behind tap-to-reveal,
+++  on-device statement parsing with the shield note, RLS-backed Personal tab.
+++
+++## Primitives
+++
+++| Primitive | File | Rule |
+++|---|---|---|
+++| Avatar | `src/components/Avatar.jsx` | Initials + deterministic color from name hash (8-color palette, WCAG-checked fg). Same person = same 
+\ No newline at end of file
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/package.json b/package.json
+--- a/package.json	2026-09-04 08:44:14.000000000 +0000
++++ b/package.json	2026-09-13 08:10:19.724644946 +0000
+@@ -1,7 +1,7 @@
+ {
+   "name": "flatsplit",
+   "private": true,
+-  "version": "2.0.0",
++  "version": "2.2.0",
+   "type": "module",
+   "scripts": {
+     "dev": "vite",
+@@ -9,9 +9,15 @@
+     "preview": "vite preview",
+     "lint": "eslint src",
+     "test": "vitest run",
+-    "build:demo": "vite build --config vite.demo.config.js && python3 scripts/fix-demo-file-protocol.py"
++    "build:demo": "vite build --config vite.demo.config.js && python3 scripts/fix-demo-file-protocol.py",
++    "cap:sync": "npm run build && npx cap sync",
++    "cap:android": "npm run build && npx cap sync android && npx cap open android",
++    "cap:ios": "npm run build && npx cap sync ios && npx cap open ios"
+   },
+   "dependencies": {
++    "@capacitor/android": "^8.5.2",
++    "@capacitor/core": "^8.5.2",
++    "@capacitor/ios": "^8.5.2",
+     "@radix-ui/react-checkbox": "^1.3.11",
+     "@radix-ui/react-dialog": "^1.1.23",
+     "@radix-ui/react-label": "^2.1.15",
+@@ -27,6 +33,7 @@
+     "vite-plugin-pwa": "^1.3.0"
+   },
+   "devDependencies": {
++    "@capacitor/cli": "^8.5.2",
+     "@eslint/js": "^9.39.5",
+     "@vitejs/plugin-react": "^4.3.1",
+     "eslint": "^9.39.5",
+@@ -38,4 +45,4 @@
+     "vite-plugin-singlefile": "^2.3.3",
+     "vitest": "^4.1.10"
+   }
+-}
++}
+\ No newline at end of file
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/components/Activity.jsx b/src/components/Activity.jsx
+--- a/src/components/Activity.jsx	2026-09-04 08:44:14.000000000 +0000
++++ b/src/components/Activity.jsx	2026-09-13 08:07:50.641218665 +0000
+@@ -6,6 +6,7 @@
+ import ExpenseSocial from './ExpenseSocial'
+ import { useToast } from './Toast'
+ import { Badge } from './ui/badge'
++import CategoryChip from './CategoryChip'
+ import { Button } from './ui/button'
+ import { Input } from './ui/input'
+ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+@@ -175,6 +176,7 @@
+     const isOpen = expanded === e.id
+     return (
+       <li key={`e-${e.id}`} className={`activity-row ${isOpen ? 'open' : ''}`}>
++        <CategoryChip category={e.category} />
+         <div
+           className="activity-main clickable"
+           onClick={() => setExpanded(isOpen ? null : e.id)}
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/components/Avatar.jsx b/src/components/Avatar.jsx
+--- a/src/components/Avatar.jsx	1970-01-01 00:00:00.000000000 +0000
++++ b/src/components/Avatar.jsx	2026-09-13 08:05:51.937022029 +0000
+@@ -0,0 +1,15 @@
++import { avatarColor, initialsOf } from '../lib/avatar'
++
++// Initials avatar with a stable per-person color.
++export default function Avatar({ name, size = 34 }) {
++  const { bg, fg } = avatarColor(name)
++  return (
++    <span
++      className="avatar"
++      style={{ width: size, height: size, background: bg, color: fg, fontSize: size * 0.38 }}
++      aria-hidden="true"
++    >
++      {initialsOf(name)}
++    </span>
++  )
++}
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/components/Balances.jsx b/src/components/Balances.jsx
+--- a/src/components/Balances.jsx	2026-09-04 08:44:14.000000000 +0000
++++ b/src/components/Balances.jsx	2026-09-13 08:07:06.883777768 +0000
+@@ -1,17 +1,12 @@
+-import { useState } from 'react'
+-import { ChevronDown } from 'lucide-react'
+-import { computeNetBalances, computeTotalSpent, computeTotalGroupExpenses, simplifyDebts, fmtMoney } from '../lib/balances'
++import { computeNetBalances, simplifyDebts, fmtMoney } from '../lib/balances'
+ import { Badge } from './ui/badge'
++import Avatar from './Avatar'
+ import { Button } from './ui/button'
+ 
+ export default function Balances({ me, members, expenses, settlements, currency, onGoSettle, onAddExpense }) {
+-  const [expandedSpender, setExpandedSpender] = useState(null)
+-  const [showSpending, setShowSpending] = useState(false)
+   const activeMembers = members.filter((m) => !m.left_at)
+   const memberIds = members.map((m) => m.id)
+   const net = computeNetBalances(memberIds, expenses, settlements)
+-  const totals = computeTotalSpent(memberIds, expenses)
+-  const totalExpenses = computeTotalGroupExpenses(expenses)
+   const transfers = simplifyDebts(net)
+   const myNet = net[me.id] ?? 0
+   const nameOf = (id) => members.find((m) => m.id === id)?.full_name || 'Someone'
+@@ -52,84 +47,13 @@
+       </section>
+ 
+       <section className="card">
+-        <button
+-          type="button"
+-          className="month-header clickable-header"
+-          onClick={() => setShowSpending((v) => !v)}
+-          aria-expanded={showSpending}
+-        >
+-          <span className="month-title-wrap">
+-            <ChevronDown size={16} className={`month-chevron ${showSpending ? '' : 'closed'}`} />
+-            <span className="month-title">Spending summary</span>
+-          </span>
+-          <span className="money">{fmtMoney(totalExpenses, currency)}</span>
+-        </button>
+-        {showSpending && (
+-        <>
+-        <p className="totals-row">
+-          <span className="totals-label">Total group expenses</span>
+-          <span className="money">{fmtMoney(totalExpenses, currency)}</span>
+-        </p>
+-        <h2 className="card-title">Spent by each person</h2>
+-        <ul className="ledger">
+-          {activeMembers.map((m) => {
+-            const spent = totals[m.id] ?? 0
+-            const share = totalExpenses > 0 ? ((spent / totalExpenses) * 100).toFixed(0) : 0
+-            const paidExpenses = expenses
+-              .filter((expense) => expense.paid_by === m.id)
+-              .sort((a, b) => `${b.expense_date}${b.created_at}`.localeCompare(`${a.expense_date}${a.created_at}`))
+-            const isExpanded = expandedSpender === m.id
+-            return (
+-              <li key={m.id} className="person-spend-item">
+-                <button
+-                  type="button"
+-                  className="ledger-row person-spend-toggle"
+-                  onClick={() => setExpandedSpender(isExpanded ? null : m.id)}
+-                  aria-expanded={isExpanded}
+-                >
+-                  <span className="ledger-name">
+-                    {m.full_name}
+-                    {m.id === me.id && <Badge variant="secondary">you</Badge>}
+-                  </span>
+-                  <span className="money">{fmtMoney(spent, currency)} <span className="pct">({share}%)</span></span>
+-                </button>
+-                {isExpanded && (
+-                  <div className="person-expenses">
+-                    {paidExpenses.length === 0 ? (
+-                      <p className="empty">No expenses paid by {m.full_name} yet.</p>
+-                    ) : (
+-                      <ul className="person-expense-list">
+-                        {paidExpenses.map((expense) => (
+-                          <li key={expense.id} className="person-expense-row">
+-                            <span className="person-expense-info">
+-                              <span className="activity-desc">{expense.description}</span>
+-                              <span className="activity-meta">
+-                                {formatExpenseDate(expense.expense_date)}
+-                                {expense.category ? ` · ${expense.category}` : ''}
+-                              </span>
+-                            </span>
+-                            <span className="money">{fmtMoney(expense.amount, currency)}</span>
+-                          </li>
+-                        ))}
+-                      </ul>
+-                    )}
+-                  </div>
+-                )}
+-              </li>
+-            )
+-          })}
+-        </ul>
+-        </>
+-        )}
+-      </section>
+-
+-      <section className="card">
+         <h2 className="card-title">Net balances</h2>
+         <ul className="ledger">
+           {activeMembers.map((m) => {
+             const v = net[m.id] ?? 0
+             return (
+-              <li key={m.id} className="ledger-row">
++              <li key={m.id} className="ledger-row person-row">
++                <Avatar name={m.full_name} size={34} />
+                 <span className="ledger-name">
+                   {m.full_name}
+                   {m.id === me.id && <Badge variant="secondary">you</Badge>}
+@@ -151,12 +75,17 @@
+           <ul className="transfer-list">
+             {activeTransfers.map((t, i) => (
+               <li key={i} className="transfer-row">
++                <span className="transfer-people">
++                  <Avatar name={nameOf(t.from)} size={30} />
++                  <span className="transfer-arrow" aria-hidden="true">→</span>
++                  <Avatar name={nameOf(t.to)} size={30} />
++                </span>
+                 <span className="transfer-text">
+                   <strong>{t.from === me.id ? 'You' : nameOf(t.from)}</strong>
+                   {' pays '}
+                   <strong>{t.to === me.id ? 'you' : nameOf(t.to)}</strong>
+                 </span>
+-                <span className="money">{fmtMoney(t.amount, currency)}</span>
++                <span className={`money ${t.to === me.id ? 'pos' : t.from === me.id ? 'neg' : ''}`}>{fmtMoney(t.amount, currency)}</span>
+               </li>
+             ))}
+           </ul>
+@@ -169,11 +98,3 @@
+   )
+ }
+ 
+-function formatExpenseDate(value) {
+-  if (!value) return ''
+-  return new Date(`${value}T00:00:00`).toLocaleDateString('en-IN', {
+-    day: 'numeric',
+-    month: 'short',
+-    year: 'numeric',
+-  })
+-}
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/components/CategoryChip.jsx b/src/components/CategoryChip.jsx
+--- a/src/components/CategoryChip.jsx	1970-01-01 00:00:00.000000000 +0000
++++ b/src/components/CategoryChip.jsx	2026-09-13 08:05:51.939252533 +0000
+@@ -0,0 +1,15 @@
++import { categoryMeta } from '../lib/categoryMeta'
++
++// Small tinted icon circle for an expense category.
++export default function CategoryChip({ category, size = 34 }) {
++  const { Icon, tint } = categoryMeta(category)
++  return (
++    <span
++      className="cat-chip"
++      style={{ width: size, height: size, color: tint, background: `color-mix(in srgb, ${tint} 14%, transparent)` }}
++      aria-hidden="true"
++    >
++      <Icon size={size * 0.52} strokeWidth={2.2} />
++    </span>
++  )
++}
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/components/DonutChart.jsx b/src/components/DonutChart.jsx
+--- a/src/components/DonutChart.jsx	2026-09-04 08:44:14.000000000 +0000
++++ b/src/components/DonutChart.jsx	2026-09-13 08:47:14.430732409 +0000
+@@ -5,6 +5,12 @@
+   '#B65C5C', '#4E8098', '#8C7A4E', '#A0526D',
+ ]
+ 
++// SVG text has no CSS ellipsis — bound the center strings in JS instead.
++function truncateLabel(label) {
++  const t = String(label || '')
++  return t.length > 16 ? `${t.slice(0, 15)}\u2026` : t
++}
++
+ export default function DonutChart({ data, selected, onSelect, formatValue }) {
+   const total = data.reduce((sum, d) => sum + d.value, 0)
+   if (total <= 0) return null
+@@ -53,9 +59,14 @@
+           </circle>
+         ))}
+         <text x={cx} y={cy - 6} textAnchor="middle" className="donut-center-label">
+-          {active ? active.label : 'Total'}
++          {truncateLabel(active ? active.label : 'Total')}
+         </text>
+-        <text x={cx} y={cy + 14} textAnchor="middle" className="donut-center-value">
++        <text
++          x={cx}
++          y={cy + 14}
++          textAnchor="middle"
++          className={`donut-center-value ${formatValue(active ? active.value : total).length > 10 ? 'donut-center-value-sm' : ''}`}
++        >
+           {formatValue(active ? active.value : total)}
+         </text>
+       </svg>
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/components/Insights.jsx b/src/components/Insights.jsx
+--- a/src/components/Insights.jsx	2026-09-04 08:44:14.000000000 +0000
++++ b/src/components/Insights.jsx	2026-09-13 08:31:06.286624002 +0000
+@@ -1,6 +1,6 @@
+ import { useMemo, useState } from 'react'
+ import { Download, Eye, EyeOff, TrendingDown, TrendingUp } from 'lucide-react'
+-import { computeNetBalances, computeTotalSpent, fmtMoney, simplifyDebts } from '../lib/balances'
++import { computeNetBalances, computeTotalSpent, fmtMoney, fmtMoneyShort, simplifyDebts } from '../lib/balances'
+ import DonutChart from './DonutChart'
+ import { Badge } from './ui/badge'
+ import { Button } from './ui/button'
+@@ -164,7 +164,7 @@
+               title={showTotals ? 'Hide totals' : 'Show totals'}
+             >
+               <span className="insight-stat-label">Total spent {showTotals ? <EyeOff size={12} /> : <Eye size={12} />}</span>
+-              <strong className="insight-stat-value">{showTotals ? fmtMoney(total, currency) : '••••••'}</strong>
++              <strong className="insight-stat-value">{showTotals ? fmtMoneyShort(total, currency) : '••••••'}</strong>
+               <span className="insight-stat-detail">{showTotals ? `${filteredExpenses.length} expense${filteredExpenses.length === 1 ? '' : 's'}` : 'Tap to reveal'}</span>
+             </button>
+             <button
+@@ -175,7 +175,7 @@
+               title={showTotals ? 'Hide totals' : 'Show totals'}
+             >
+               <span className="insight-stat-label">Average per month {showTotals ? <EyeOff size={12} /> : <Eye size={12} />}</span>
+-              <strong className="insight-stat-value">{showTotals ? fmtMoney(averageMonthly, currency) : '••••••'}</strong>
++              <strong className="insight-stat-value">{showTotals ? fmtMoneyShort(averageMonthly, currency) : '••••••'}</strong>
+               <span className="insight-stat-detail">{showTotals ? `${monthly.length || 0} month${monthly.length === 1 ? '' : 's'} with spending` : 'Tap to reveal'}</span>
+             </button>
+             <StatCard label="Top category" value={topCategory ? topCategory[0] : '—'} detail={topCategory ? fmtMoney(topCategory[1], currency) : 'No categories'} />
+@@ -194,7 +194,7 @@
+                 onClick={() => setShowTotals((v) => !v)}
+                 title={showTotals ? 'Hide total' : 'Show total'}
+               >
+-                {showTotals ? fmtMoney(total, currency) : '••••••'}
++                {showTotals ? fmtMoneyShort(total, currency) : '••••••'}
+               </button>
+             </div>
+             <p className="hint">Tap a month to see its expenses.</p>
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/components/Personal.jsx b/src/components/Personal.jsx
+--- a/src/components/Personal.jsx	2026-09-04 08:44:14.000000000 +0000
++++ b/src/components/Personal.jsx	2026-09-13 08:28:04.826825459 +0000
+@@ -1,9 +1,10 @@
+ import { useCallback, useEffect, useMemo, useState } from 'react'
+ import { FileUp, Lock, Pencil, Plus, Sparkles, Trash2, X } from 'lucide-react'
+ import { supabase } from '../supabaseClient'
+-import { fmtMoney } from '../lib/balances'
++import { fmtMoney, fmtMoneyShort } from '../lib/balances'
+ import DonutChart from './DonutChart'
+ import ImportStatement from './ImportStatement'
++import CategoryChip from './CategoryChip'
+ import { analyzePersonality } from '../lib/personality'
+ import { useToast } from './Toast'
+ import { Button } from './ui/button'
+@@ -331,13 +332,14 @@
+         <section className="card">
+           <h2 className="card-title">Month-by-month total</h2>
+           <p className="hint">Your personal spend + your share of expenses in all {groups.length} group{groups.length === 1 ? '' : 's'}.</p>
+-          <ul className="ledger">
++          <ul className="month-grid">
+             {monthly.map((m) => (
+-              <li key={m.key} className="ledger-row">
+-                <span className="ledger-name">{m.label}</span>
+-                <span className="money">
+-                  {fmtMoney(m.personal + m.group, currency)}
+-                  <span className="pct">personal {fmtMoney(m.personal, currency)} · groups {fmtMoney(m.group, currency)}</span>
++              <li key={m.key} className="month-box">
++                <span className="month-box-label">{m.label}</span>
++                <span className="month-box-total money">{fmtMoneyShort(m.personal + m.group, currency)}</span>
++                <span className="month-box-split">
++                  <span className="month-box-part">personal <span className="money">{fmtMoneyShort(m.personal, currency)}</span></span>
++                  <span className="month-box-part">groups <span className="money">{fmtMoneyShort(m.group, currency)}</span></span>
+                 </span>
+               </li>
+             ))}
+@@ -370,6 +372,7 @@
+             <ul className="activity-list">
+               {month.items.map((item) => (
+                 <li key={item.id} className="activity-row">
++                  <CategoryChip category={item.category} />
+                   <div className="activity-main">
+                     <span className="activity-desc">{item.description}</span>
+                     <span className="activity-meta">
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/components/Settle.jsx b/src/components/Settle.jsx
+--- a/src/components/Settle.jsx	2026-09-04 08:44:14.000000000 +0000
++++ b/src/components/Settle.jsx	2026-09-13 08:07:50.642709127 +0000
+@@ -5,6 +5,7 @@
+ import { useToast } from './Toast'
+ import { Alert, AlertDescription } from './ui/alert'
+ import { Button } from './ui/button'
++import Avatar from './Avatar'
+ import { Input } from './ui/input'
+ import { Label } from './ui/label'
+ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+@@ -133,6 +134,11 @@
+           <ul className="transfer-list">
+             {suggestions.map((t, i) => (
+               <li key={i} className="transfer-row">
++                <span className="transfer-people">
++                  <Avatar name={nameOf(t.from)} size={30} />
++                  <span className="transfer-arrow" aria-hidden="true">→</span>
++                  <Avatar name={nameOf(t.to)} size={30} />
++                </span>
+                 <span className="transfer-text">
+                   <strong>{t.from === me.id ? 'You' : nameOf(t.from)}</strong>
+                   {' → '}
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/demo/mockSupabase.js b/src/demo/mockSupabase.js
+--- a/src/demo/mockSupabase.js	2026-09-04 08:44:14.000000000 +0000
++++ b/src/demo/mockSupabase.js	2026-09-13 08:30:34.341035513 +0000
+@@ -72,6 +72,8 @@
+   expense_comments: [],
+   expense_reactions: [],
+   personal_expenses: [
++    { id: uid(), user_id: ASHA, description: 'Split AC service + gas refill + stabilizer replacement for both bedrooms before summer, including technician visit charges', amount: 4850, category: 'Utilities', expense_date: '2026-07-03', source: 'manual', created_at: '2026-07-03T09:00:00Z' },
++    { id: uid(), user_id: ASHA, description: 'New laptop (EMI downpayment)', amount: 125000, category: 'Shopping', expense_date: '2026-07-05', source: 'manual', created_at: '2026-07-05T10:00:00Z' },
+     { id: uid(), user_id: ASHA, description: 'Chai', amount: 20, category: 'Food & Groceries', expense_date: '2026-08-29', created_at: now() },
+     { id: uid(), user_id: ASHA, description: 'Auto to office', amount: 85, category: 'Transportation', expense_date: '2026-08-28', created_at: now() },
+     { id: uid(), user_id: ASHA, description: 'Movie snacks', amount: 240, category: 'Entertainment', expense_date: '2026-08-22', created_at: now() },
+@@ -97,7 +99,10 @@
+ 
+ // ---------- tiny query builder ----------
+ function matches(row, filters) {
+-  return filters.every(({ k, v }) => (v === null ? row[k] == null : row[k] === v))
++  return filters.every(({ k, v, anyOf }) => {
++    if (anyOf) return anyOf.includes(row[k])
++    return v === null ? row[k] == null : row[k] === v
++  })
+ }
+ 
+ class Builder {
+@@ -111,6 +116,7 @@
+   }
+   select(sel) { if (sel) this.sel = sel; return this }
+   eq(k, v) { this.filters.push({ k, v }); return this }
++  in(k, arr) { this.filters.push({ k, anyOf: arr }); return this }
+   is(k, v) { this.filters.push({ k, v }); return this }
+   match(obj) { for (const [k, v] of Object.entries(obj)) this.filters.push({ k, v }); return this }
+   order() { return this }
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/lib/avatar.js b/src/lib/avatar.js
+--- a/src/lib/avatar.js	1970-01-01 00:00:00.000000000 +0000
++++ b/src/lib/avatar.js	2026-09-13 08:05:51.931777952 +0000
+@@ -0,0 +1,29 @@
++// Deterministic avatar colors: the same person always gets the same hue,
++// on every device, with readable contrast in light and dark mode.
++// Inspired by people-first designs (Splitwise/Tricount show faces up front);
++// we use initials + color since FlatSplit has no profile photos (yet).
++
++const PALETTE = [
++  { bg: '#2E5E4E', fg: '#F6F5F1' }, // pine
++  { bg: '#B4552D', fg: '#FFF4EC' }, // clay
++  { bg: '#3E5C76', fg: '#EFF4F9' }, // slate blue
++  { bg: '#7A4E7E', fg: '#F9F0FA' }, // plum
++  { bg: '#946B2D', fg: '#FBF4E8' }, // ochre
++  { bg: '#2D6E6E', fg: '#ECF7F7' }, // teal
++  { bg: '#8C3B4A', fg: '#FBEFF1' }, // maroon
++  { bg: '#4E6E33', fg: '#F3F8ED' }, // moss
++]
++
++export function avatarColor(name) {
++  const s = String(name || '?')
++  let h = 0
++  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
++  return PALETTE[h % PALETTE.length]
++}
++
++export function initialsOf(name) {
++  const parts = String(name || '?').trim().split(/\s+/)
++  const first = parts[0]?.[0] || '?'
++  const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
++  return (first + last).toUpperCase()
++}
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/lib/balances.js b/src/lib/balances.js
+--- a/src/lib/balances.js	2026-09-04 08:44:14.000000000 +0000
++++ b/src/lib/balances.js	2026-09-13 08:28:04.824197987 +0000
+@@ -130,6 +130,18 @@
+   return Math.round(n * 100) / 100
+ }
+ 
++// Compact money for fixed-size UI boxes: full paise below ₹1,000, whole
++// rupees above — so even crore-scale values stay short and never break
++// a constant-width card. Indian digit grouping (1,23,456) throughout.
++export function fmtMoneyShort(n, currency = '₹') {
++  const v = Math.abs(Number(n) || 0)
++  const decimals = v >= 1000 ? 0 : 2
++  return `${currency}${v.toLocaleString('en-IN', {
++    minimumFractionDigits: decimals,
++    maximumFractionDigits: decimals,
++  })}`
++}
++
+ export function fmtMoney(n, currency = '₹') {
+   const v = Math.abs(Number(n) || 0)
+   return `${currency}${v.toLocaleString('en-IN', {
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/lib/categoryMeta.js b/src/lib/categoryMeta.js
+--- a/src/lib/categoryMeta.js	1970-01-01 00:00:00.000000000 +0000
++++ b/src/lib/categoryMeta.js	2026-09-13 08:05:51.938125834 +0000
+@@ -0,0 +1,23 @@
++// One icon + tint per expense category, used everywhere a category shows up
++// so expenses become scannable at a glance (a pattern every major
++// split-expense app converged on: icon chips beat plain text labels).
++import {
++  CircleEllipsis, Clapperboard, HeartPulse, Home, Lightbulb,
++  Car, ShoppingBag, Tv, UtensilsCrossed,
++} from 'lucide-react'
++
++const META = {
++  'Food & Groceries': { Icon: UtensilsCrossed, tint: '#B4552D' },
++  Rent: { Icon: Home, tint: '#2E5E4E' },
++  Utilities: { Icon: Lightbulb, tint: '#946B2D' },
++  Transportation: { Icon: Car, tint: '#3E5C76' },
++  Entertainment: { Icon: Clapperboard, tint: '#7A4E7E' },
++  Shopping: { Icon: ShoppingBag, tint: '#8C3B4A' },
++  Health: { Icon: HeartPulse, tint: '#2D6E6E' },
++  Subscriptions: { Icon: Tv, tint: '#4E6E33' },
++  Other: { Icon: CircleEllipsis, tint: '#6B7280' },
++}
++
++export function categoryMeta(category) {
++  return META[category] || META.Other
++}
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/lib/statement.test.js b/src/lib/statement.test.js
+--- a/src/lib/statement.test.js	2026-09-04 08:44:14.000000000 +0000
++++ b/src/lib/statement.test.js	2026-09-13 08:28:35.633590967 +0000
+@@ -127,3 +127,16 @@
+     expect(weekend.value).toBe('71%') // 1000 / 1400
+   })
+ })
++
++describe('fmtMoneyShort (lakh-proof box formatting)', async () => {
++  const { fmtMoneyShort } = await import('./balances')
++  it('keeps paise under ₹1,000, drops them above', () => {
++    expect(fmtMoneyShort(340.5, '₹')).toBe('₹340.50')
++    expect(fmtMoneyShort(15147.34, '₹')).toBe('₹15,147')
++  })
++  it('uses Indian lakh/crore grouping and stays short', () => {
++    expect(fmtMoneyShort(125000, '₹')).toBe('₹1,25,000')
++    expect(fmtMoneyShort(12345678.9, '₹')).toBe('₹1,23,45,679')
++    expect(fmtMoneyShort(12345678.9, '₹').length).toBeLessThanOrEqual(12)
++  })
++})
+diff -ruN -x node_modules -x dist -x dist-demo -x .DS_Store -x android -x ios -x package-lock.json -x .gradle a/src/styles.css b/src/styles.css
+--- a/src/styles.css	2026-09-04 08:44:14.000000000 +0000
++++ b/src/styles.css	2026-09-13 08:55:15.338531086 +0000
+@@ -243,8 +243,20 @@
+ .activity-row.settlement .activity-desc { color: var(--pine); }
+ .activity-main { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+ .activity-main.clickable { cursor: pointer; }
+-.activity-desc { font-weight: 500; }
+-.activity-meta { font-size: 0.8rem; color: var(--ink-soft); }
++.activity-desc { font-weight: 550; font-size: 1.05rem; line-height: 1.3; } /* 1.5x the category tag */
++/* meta line as a small pill box — readable, bounded, consistent */
++.activity-meta {
++  align-self: flex-start;
++  max-width: 100%;
++  font-size: 0.74rem;
++  color: var(--ink-soft);
++  background: var(--paper);
++  border: 1px solid var(--line);
++  border-radius: 999px;
++  padding: 3px 9px;
++  line-height: 1.35;
++}
++[data-theme='dark'] .activity-meta { background: rgba(255, 255, 255, 0.05); }
+ .split-detail {
+   margin-top: 8px;
+   gap: 4px;
+@@ -425,7 +437,37 @@
+   padding: 6px 0;
+   border-radius: 10px;
+ }
+-.tab.active { color: var(--pine); }
++/* --- active tab: themed circle behind the icon, lifted like a 3D button --- */
++.tab { transition: color 0.18s ease; }
++.tab .tab-icon {
++  width: 40px; height: 40px;
++  display: inline-flex; align-items: center; justify-content: center;
++  border-radius: 50%;
++  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.18s ease, box-shadow 0.22s ease, color 0.18s ease;
++}
++.tab.active { color: var(--pine); font-weight: 650; }
++.tab.active .tab-icon {
++  background: var(--pine);
++  color: #fff;
++  transform: translateY(-7px) scale(1.06);
++  box-shadow: 0 7px 16px color-mix(in srgb, var(--pine) 42%, transparent),
++              0 2px 4px rgba(0, 0, 0, 0.14),
++              inset 0 1px 0 rgba(255, 255, 255, 0.22);
++}
++/* dark mode: brighter mint circle with dark ink icon reads better on the dark bar */
++[data-theme='dark'] .tab.active { color: #9FD6C2; }
++[data-theme='dark'] .tab.active .tab-icon {
++  background: #7FB8A3;
++  color: #14201B;
++  box-shadow: 0 7px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.28);
++}
++/* press feedback: the button pushes in under the finger, springs back on release */
++.tab:active .tab-icon { transform: translateY(-2px) scale(0.9); }
++.tab:not(.active):active .tab-icon { transform: scale(0.88); background: color-mix(in srgb, var(--pine) 12%, transparent); }
++@media (prefers-reduced-motion: reduce) {
++  .tab .tab-icon, .tab { transition: none; }
++  .tab.active .tab-icon { transform: none; }
++}
+ .tab-icon { font-size: 1.05rem; line-height: 1; display: inline-flex; align-items: center; }
+ .tab-icon svg { display: block; }
+ .tab.add-btn {
+@@ -605,7 +647,7 @@
+   border-color: var(--pine);
+ }
+ .activity-cat-tag {
+-  font-size: 0.65rem;
++  font-size: 0.7rem; /* desc:tag = 1.05rem : 0.7rem = 1.5 : 1 */
+   background: var(--pine);
+   color: #fff;
+   border-radius: 999px;
+@@ -1461,3 +1503,183 @@
+ .personal-actions { gap: 9px; }
+ 
+ .pdf-password { display: flex; flex-direction: column; gap: 7px; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
++
++/* ---------- v3 design primitives: avatars + category chips ---------- */
++.avatar {
++  display: inline-grid; place-items: center; flex: none;
++  border-radius: 50%;
++  font-weight: 700; letter-spacing: 0.02em;
++  user-select: none;
++}
++.cat-chip {
++  display: inline-grid; place-items: center; flex: none;
++  border-radius: 12px;
++}
++[data-theme='dark'] .cat-chip { filter: brightness(1.25); }
++
++/* ---------- v3 row layouts ---------- */
++.person-row { display: flex; align-items: center; gap: 11px; }
++.person-row .ledger-name { flex: 1; }
++.activity-row { display: flex; align-items: flex-start; gap: 11px; }
++.activity-row > .cat-chip { margin-top: 2px; }
++.transfer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
++.transfer-people { display: inline-flex; align-items: center; gap: 4px; flex: none; }
++.transfer-arrow { color: var(--ink-soft); font-size: 0.85rem; }
++.transfer-text { flex: 1; min-width: 140px; }
++
++/* ---------- mobile-native hardening (iOS/Android/web) ---------- */
++html { -webkit-tap-highlight-color: transparent; }
++body { overscroll-behavior-y: none; -webkit-text-size-adjust: 100%; }
++button, .tab, .ui-button { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
++.tabbar .tab { min-height: 52px; }
++.ui-button, .icon-btn { min-height: 40px; min-width: 40px; }
++@media (max-width: 620px) {
++  /* 16px inputs stop iOS Safari from auto-zooming on focus */
++  input, select, textarea, .ui-input { font-size: 16px; }
++}
++@supports (padding: max(0px)) {
++  .content { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
++}
++
++/* ---------- month-by-month boxes (constant size, lakh-proof) ---------- */
++.month-grid {
++  list-style: none; margin: 0; padding: 0;
++  display: grid;
++  grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
++  gap: 9px;
++}
++.month-box {
++  height: 104px; /* constant: every box identical regardless of value */
++  border: 1px solid var(--line);
++  border-radius: 14px;
++  padding: 10px 12px;
++  display: flex; flex-direction: column; justify-content: space-between;
++  overflow: hidden;
++  background: var(--paper);
++}
++[data-theme='dark'] .month-box { background: rgba(255, 255, 255, 0.03); }
++.month-box-label {
++  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
++  color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
++}
++.month-box-total {
++  font-size: 1.06rem; font-weight: 650;
++  font-variant-numeric: tabular-nums;
++  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
++}
++.month-box-split { display: flex; flex-direction: column; gap: 1px; }
++.month-box-part {
++  font-size: 0.71rem; color: var(--ink-soft);
++  display: flex; justify-content: space-between; gap: 6px;
++  white-space: nowrap; overflow: hidden;
++}
++.month-box-part .money { font-size: 0.73rem; font-variant-numeric: tabular-nums; }
++@media (max-width: 400px) { .month-grid { grid-template-columns: repeat(2, 1fr); } }
++
++/* ============================================================
++   BOUNDING SYSTEM — "text yields, numbers hold"
++   Every row is a bounded container. Text cells flex + ellipsize
++   inside their box; money cells never wrap and never truncate.
++   A change in one cell can never move or break its siblings.
++   ============================================================ */
++
++/* rows are bounded flex containers; children may shrink (min-width: 0) */
++.ledger-row, .transfer-row, .activity-row, .import-row,
++.person-spend-toggle, .totals-row, .month-header, .split-detail li,
++.import-footer, .persona-trait {
++  min-width: 0;
++}
++.ledger-row > *, .transfer-row > *, .activity-row > *,
++.import-row > *, .month-header > *, .split-detail li > * {
++  min-width: 0;
++}
++
++/* TEXT CELLS: take remaining space, truncate inside it */
++.ledger-name, .transfer-text, .totals-label, .month-title,
++.import-name, .import-date, .activity-meta,
++.persona-trait-value, .persona-trait-detail, .persona-peek,
++.split-detail li > span:first-child {
++  overflow: hidden;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++.ledger-name, .transfer-text { flex: 1 1 auto; }
++
++/* descriptions get two lines before clamping (names get one) */
++.activity-desc {
++  display: -webkit-box;
++  -webkit-line-clamp: 2;
++  -webkit-box-orient: vertical;
++  overflow: hidden;
++  overflow-wrap: anywhere;
++}
++
++/* NUMBER CELLS: fixed, whole, aligned — never wrap, never shrink */
++.ledger-row .money, .transfer-row .money, .activity-row > .money,
++.month-header .money, .totals-row .money, .split-detail .money,
++.import-row .money, .hero-amount, .insight-stat-value,
++.month-box-total, .month-box-part .money {
++  flex: 0 0 auto;
++  white-space: nowrap;
++  font-variant-numeric: tabular-nums;
++}
++
++/* hero scales down fluidly instead of overflowing on huge values */
++.hero-amount { font-size: clamp(1.55rem, 8.5vw, 2.3rem); max-width: 100%; }
++
++/* stat cards keep constant footprint regardless of value length */
++.insight-stat-card { min-height: 92px; overflow: hidden; }
++.insight-stat-value { overflow: hidden; text-overflow: ellipsis; display: block; }
++.insight-stat-detail { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
++
++/* ---------- bounding sweep: remaining surfaces ---------- */
++/* top bar: long group names ellipsize between the icons */
++.topbar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++
++/* card titles inside header rows never push their buttons */
++.card-title-row { min-width: 0; }
++.card-title-row .card-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++
++/* group settings: name + invite code stay in their boxes */
++.group-name-row { min-width: 0; }
++.group-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++.invite-code, .code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
++
++/* comments: author truncates, body WRAPS inside the bubble —
++   long unbroken strings (urls, keyboard mash) break instead of overflowing */
++.comment-row { min-width: 0; }
++.comment-author { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
++.comment-body, .comment-text, .pay-confirm-text, .hint, .empty {
++  overflow-wrap: anywhere;
++  min-width: 0;
++}
++
++/* toasts: message wraps within the toast, buttons hold */
++.toast { max-width: min(92vw, 420px); }
++.toast > span, .toast p { overflow-wrap: anywhere; min-width: 0; }
++.toast-action, .toast-dismiss { flex: none; }
++
++/* donut legend: label yields, numbers hold */
++.donut-legend li { min-width: 0; display: flex; align-items: center; gap: 8px; }
++.donut-legend-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++.donut-legend-pct, .donut-legend .money { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
++.donut-center-value { font-variant-numeric: tabular-nums; }
++.donut-center-value-sm { font-size: 0.78em; }
++
++/* add-expense split rows: name yields, input holds its width */
++.split-list li { min-width: 0; }
++.split-check { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; }
++.split-input { flex: none; }
++
++/* selects: chosen value ellipsizes inside the trigger */
++button[role='combobox'] { min-width: 0; max-width: 100%; }
++button[role='combobox'] > span:first-of-type { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++
++/* profile: name + email bounded */
++.profile-name-row { min-width: 0; }
++.profile-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
++.profile-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
++
++/* generic guard: no horizontal scroll leaks, ever */
++.page, .card { min-width: 0; max-width: 100%; }
++.content { overflow-x: hidden; }

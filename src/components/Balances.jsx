@@ -1,17 +1,12 @@
-import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
-import { computeNetBalances, computeTotalSpent, computeTotalGroupExpenses, simplifyDebts, fmtMoney } from '../lib/balances'
+import { computeNetBalances, simplifyDebts, fmtMoney } from '../lib/balances'
 import { Badge } from './ui/badge'
+import Avatar from './Avatar'
 import { Button } from './ui/button'
 
 export default function Balances({ me, members, expenses, settlements, currency, onGoSettle, onAddExpense }) {
-  const [expandedSpender, setExpandedSpender] = useState(null)
-  const [showSpending, setShowSpending] = useState(false)
   const activeMembers = members.filter((m) => !m.left_at)
   const memberIds = members.map((m) => m.id)
   const net = computeNetBalances(memberIds, expenses, settlements)
-  const totals = computeTotalSpent(memberIds, expenses)
-  const totalExpenses = computeTotalGroupExpenses(expenses)
   const transfers = simplifyDebts(net)
   const myNet = net[me.id] ?? 0
   const nameOf = (id) => members.find((m) => m.id === id)?.full_name || 'Someone'
@@ -52,84 +47,13 @@ export default function Balances({ me, members, expenses, settlements, currency,
       </section>
 
       <section className="card">
-        <button
-          type="button"
-          className="month-header clickable-header"
-          onClick={() => setShowSpending((v) => !v)}
-          aria-expanded={showSpending}
-        >
-          <span className="month-title-wrap">
-            <ChevronDown size={16} className={`month-chevron ${showSpending ? '' : 'closed'}`} />
-            <span className="month-title">Spending summary</span>
-          </span>
-          <span className="money">{fmtMoney(totalExpenses, currency)}</span>
-        </button>
-        {showSpending && (
-        <>
-        <p className="totals-row">
-          <span className="totals-label">Total group expenses</span>
-          <span className="money">{fmtMoney(totalExpenses, currency)}</span>
-        </p>
-        <h2 className="card-title">Spent by each person</h2>
-        <ul className="ledger">
-          {activeMembers.map((m) => {
-            const spent = totals[m.id] ?? 0
-            const share = totalExpenses > 0 ? ((spent / totalExpenses) * 100).toFixed(0) : 0
-            const paidExpenses = expenses
-              .filter((expense) => expense.paid_by === m.id)
-              .sort((a, b) => `${b.expense_date}${b.created_at}`.localeCompare(`${a.expense_date}${a.created_at}`))
-            const isExpanded = expandedSpender === m.id
-            return (
-              <li key={m.id} className="person-spend-item">
-                <button
-                  type="button"
-                  className="ledger-row person-spend-toggle"
-                  onClick={() => setExpandedSpender(isExpanded ? null : m.id)}
-                  aria-expanded={isExpanded}
-                >
-                  <span className="ledger-name">
-                    {m.full_name}
-                    {m.id === me.id && <Badge variant="secondary">you</Badge>}
-                  </span>
-                  <span className="money">{fmtMoney(spent, currency)} <span className="pct">({share}%)</span></span>
-                </button>
-                {isExpanded && (
-                  <div className="person-expenses">
-                    {paidExpenses.length === 0 ? (
-                      <p className="empty">No expenses paid by {m.full_name} yet.</p>
-                    ) : (
-                      <ul className="person-expense-list">
-                        {paidExpenses.map((expense) => (
-                          <li key={expense.id} className="person-expense-row">
-                            <span className="person-expense-info">
-                              <span className="activity-desc">{expense.description}</span>
-                              <span className="activity-meta">
-                                {formatExpenseDate(expense.expense_date)}
-                                {expense.category ? ` · ${expense.category}` : ''}
-                              </span>
-                            </span>
-                            <span className="money">{fmtMoney(expense.amount, currency)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                )}
-              </li>
-            )
-          })}
-        </ul>
-        </>
-        )}
-      </section>
-
-      <section className="card">
         <h2 className="card-title">Net balances</h2>
         <ul className="ledger">
           {activeMembers.map((m) => {
             const v = net[m.id] ?? 0
             return (
-              <li key={m.id} className="ledger-row">
+              <li key={m.id} className="ledger-row person-row">
+                <Avatar name={m.full_name} size={34} />
                 <span className="ledger-name">
                   {m.full_name}
                   {m.id === me.id && <Badge variant="secondary">you</Badge>}
@@ -151,12 +75,17 @@ export default function Balances({ me, members, expenses, settlements, currency,
           <ul className="transfer-list">
             {activeTransfers.map((t, i) => (
               <li key={i} className="transfer-row">
+                <span className="transfer-people">
+                  <Avatar name={nameOf(t.from)} size={30} />
+                  <span className="transfer-arrow" aria-hidden="true">→</span>
+                  <Avatar name={nameOf(t.to)} size={30} />
+                </span>
                 <span className="transfer-text">
                   <strong>{t.from === me.id ? 'You' : nameOf(t.from)}</strong>
                   {' pays '}
                   <strong>{t.to === me.id ? 'you' : nameOf(t.to)}</strong>
                 </span>
-                <span className="money">{fmtMoney(t.amount, currency)}</span>
+                <span className={`money ${t.to === me.id ? 'pos' : t.from === me.id ? 'neg' : ''}`}>{fmtMoney(t.amount, currency)}</span>
               </li>
             ))}
           </ul>
@@ -169,11 +98,3 @@ export default function Balances({ me, members, expenses, settlements, currency,
   )
 }
 
-function formatExpenseDate(value) {
-  if (!value) return ''
-  return new Date(`${value}T00:00:00`).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-}
