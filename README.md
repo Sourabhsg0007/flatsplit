@@ -1,5 +1,7 @@
 # FlatSplit
 
+> 📱 **Native apps:** see [docs/MOBILE_APPS.md](docs/MOBILE_APPS.md) to build and ship the iOS/Android apps. Design language: [docs/DESIGN.md](docs/DESIGN.md).
+
 A Splitwise-style web app for you and your flatmates. Add daily expenses, split them
 equally / by exact amounts / by percentages / by shares, see who owes whom, and settle
 up whenever you like. Works in any browser on any device, syncs live, and runs entirely

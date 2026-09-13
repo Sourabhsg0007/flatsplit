@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FileUp, Lock, Pencil, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import { supabase } from '../supabaseClient'
-import { fmtMoney } from '../lib/balances'
+import { fmtMoney, fmtMoneyShort } from '../lib/balances'
 import DonutChart from './DonutChart'
 import ImportStatement from './ImportStatement'
+import CategoryChip from './CategoryChip'
 import { analyzePersonality } from '../lib/personality'
 import { useToast } from './Toast'
 import { Button } from './ui/button'
@@ -331,13 +332,14 @@ export default function Personal({ me, groups, currency }) {
         <section className="card">
           <h2 className="card-title">Month-by-month total</h2>
           <p className="hint">Your personal spend + your share of expenses in all {groups.length} group{groups.length === 1 ? '' : 's'}.</p>
-          <ul className="ledger">
+          <ul className="month-grid">
             {monthly.map((m) => (
-              <li key={m.key} className="ledger-row">
-                <span className="ledger-name">{m.label}</span>
-                <span className="money">
-                  {fmtMoney(m.personal + m.group, currency)}
-                  <span className="pct">personal {fmtMoney(m.personal, currency)} · groups {fmtMoney(m.group, currency)}</span>
+              <li key={m.key} className="month-box">
+                <span className="month-box-label">{m.label}</span>
+                <span className="month-box-total money">{fmtMoneyShort(m.personal + m.group, currency)}</span>
+                <span className="month-box-split">
+                  <span className="month-box-part">personal <span className="money">{fmtMoneyShort(m.personal, currency)}</span></span>
+                  <span className="month-box-part">groups <span className="money">{fmtMoneyShort(m.group, currency)}</span></span>
                 </span>
               </li>
             ))}
@@ -370,6 +372,7 @@ export default function Personal({ me, groups, currency }) {
             <ul className="activity-list">
               {month.items.map((item) => (
                 <li key={item.id} className="activity-row">
+                  <CategoryChip category={item.category} />
                   <div className="activity-main">
                     <span className="activity-desc">{item.description}</span>
                     <span className="activity-meta">

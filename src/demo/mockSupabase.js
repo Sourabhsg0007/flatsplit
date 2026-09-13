@@ -72,6 +72,8 @@ const db = {
   expense_comments: [],
   expense_reactions: [],
   personal_expenses: [
+    { id: uid(), user_id: ASHA, description: 'Split AC service + gas refill + stabilizer replacement for both bedrooms before summer, including technician visit charges', amount: 4850, category: 'Utilities', expense_date: '2026-07-03', source: 'manual', created_at: '2026-07-03T09:00:00Z' },
+    { id: uid(), user_id: ASHA, description: 'New laptop (EMI downpayment)', amount: 125000, category: 'Shopping', expense_date: '2026-07-05', source: 'manual', created_at: '2026-07-05T10:00:00Z' },
     { id: uid(), user_id: ASHA, description: 'Chai', amount: 20, category: 'Food & Groceries', expense_date: '2026-08-29', created_at: now() },
     { id: uid(), user_id: ASHA, description: 'Auto to office', amount: 85, category: 'Transportation', expense_date: '2026-08-28', created_at: now() },
     { id: uid(), user_id: ASHA, description: 'Movie snacks', amount: 240, category: 'Entertainment', expense_date: '2026-08-22', created_at: now() },
@@ -97,7 +99,10 @@ db.expense_reactions.push(
 
 // ---------- tiny query builder ----------
 function matches(row, filters) {
-  return filters.every(({ k, v }) => (v === null ? row[k] == null : row[k] === v))
+  return filters.every(({ k, v, anyOf }) => {
+    if (anyOf) return anyOf.includes(row[k])
+    return v === null ? row[k] == null : row[k] === v
+  })
 }
 
 class Builder {
@@ -111,6 +116,7 @@ class Builder {
   }
   select(sel) { if (sel) this.sel = sel; return this }
   eq(k, v) { this.filters.push({ k, v }); return this }
+  in(k, arr) { this.filters.push({ k, anyOf: arr }); return this }
   is(k, v) { this.filters.push({ k, v }); return this }
   match(obj) { for (const [k, v] of Object.entries(obj)) this.filters.push({ k, v }); return this }
   order() { return this }

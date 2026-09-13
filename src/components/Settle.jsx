@@ -5,6 +5,7 @@ import { computeNetBalances, simplifyDebts, fmtMoney } from '../lib/balances'
 import { useToast } from './Toast'
 import { Alert, AlertDescription } from './ui/alert'
 import { Button } from './ui/button'
+import Avatar from './Avatar'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
@@ -133,6 +134,11 @@ export default function Settle({ group, me, members, expenses, settlements, onSa
           <ul className="transfer-list">
             {suggestions.map((t, i) => (
               <li key={i} className="transfer-row">
+                <span className="transfer-people">
+                  <Avatar name={nameOf(t.from)} size={30} />
+                  <span className="transfer-arrow" aria-hidden="true">→</span>
+                  <Avatar name={nameOf(t.to)} size={30} />
+                </span>
                 <span className="transfer-text">
                   <strong>{t.from === me.id ? 'You' : nameOf(t.from)}</strong>
                   {' → '}

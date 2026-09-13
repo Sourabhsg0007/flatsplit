@@ -127,3 +127,16 @@ describe('analyzePersonality', () => {
     expect(weekend.value).toBe('71%') // 1000 / 1400
   })
 })
+
+describe('fmtMoneyShort (lakh-proof box formatting)', async () => {
+  const { fmtMoneyShort } = await import('./balances')
+  it('keeps paise under ₹1,000, drops them above', () => {
+    expect(fmtMoneyShort(340.5, '₹')).toBe('₹340.50')
+    expect(fmtMoneyShort(15147.34, '₹')).toBe('₹15,147')
+  })
+  it('uses Indian lakh/crore grouping and stays short', () => {
+    expect(fmtMoneyShort(125000, '₹')).toBe('₹1,25,000')
+    expect(fmtMoneyShort(12345678.9, '₹')).toBe('₹1,23,45,679')
+    expect(fmtMoneyShort(12345678.9, '₹').length).toBeLessThanOrEqual(12)
+  })
+})

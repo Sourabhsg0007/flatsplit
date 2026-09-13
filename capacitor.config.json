@@ -1,0 +1,15 @@
+{
+  "appId": "app.flatsplit.expenses",
+  "appName": "FlatSplit",
+  "webDir": "dist",
+  "backgroundColor": "#21312A",
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "automatic"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

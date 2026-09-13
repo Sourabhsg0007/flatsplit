@@ -3,6 +3,72 @@
 All notable changes to FlatSplit are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com); versions follow semver.
 
+## [2.2.0] — 2026-09-05
+
+### Added
+- **Native iOS & Android apps (Capacitor)** — `android/` and `ios/` native
+  projects, `capacitor.config.json`, and npm scripts (`cap:sync`,
+  `cap:android`, `cap:ios`). Full build + store-submission guide in
+  `docs/MOBILE_APPS.md` (signing, icons, listings, privacy forms, and the
+  Google-OAuth-in-webview caveat).
+- **Avatars** — every person gets an initials avatar with a stable
+  per-person color (net balances, settle suggestions).
+- **Category icon chips** — each expense row leads with its category's icon
+  in a tinted chip (Activity + Personal), making lists scannable.
+- `docs/DESIGN.md` — the design language, inspirations from Splitwise /
+  Tricount / Settle Up research, and mobile-native rules.
+
+### Changed
+- **Activity rows redesigned for readability** — the meta line (date · payer
+  · your share) sits in a small rounded pill box; description-to-category-tag
+  font ratio is exactly 1.5:1 (1.05rem : 0.7rem) so the expense name clearly
+  leads.
+- **Tab bar active state, reimagined** — the active tab's icon gets a filled
+  theme-color circle (pine with white icon in light mode; mint with dark icon
+  in dark mode) that lifts off the bar with a springy 3D pop and shadow;
+  pressing any tab pushes the button in under your finger. Respects
+  prefers-reduced-motion.
+- **Bounding sweep completed across every screen** — top bar, group
+  settings (name/invite code), comments (bodies wrap, authors truncate),
+  toasts, donut chart center (JS-truncated with auto-shrink for long values)
+  and legend, add-expense split rows, select triggers, profile name/email,
+  and a global no-horizontal-scroll guard.
+- **App-wide bounding system ("text yields, numbers hold")** — every row and
+  card bounds its content: names/descriptions flex and ellipsize (2-line
+  clamp for expense descriptions), amounts never wrap and use tabular
+  numerals so columns align; the hero amount scales fluidly; Insights
+  overview stats use the compact lakh-proof format. No value, however long,
+  can push or break neighbouring UI. Documented in docs/DESIGN.md.
+- **Personal: month-by-month totals are now fixed-size boxes** — a grid of
+  identical cards (label / combined total / personal · groups breakdown)
+  instead of text rows. Amounts use a lakh-proof compact format
+  (`fmtMoneyShort`): paise shown under ₹1,000, whole rupees above, Indian
+  digit grouping — so even ₹1,23,45,679 fits without breaking the layout.
+- **Home screen simplified** — the group spending totals card was removed
+  from Balances; home is now: your balance → net balances (with avatars) →
+  who pays whom. Totals live in Insights behind tap-to-reveal.
+- Settle suggestions show payer → payee avatars, and amounts are colored
+  green/red relative to you (owed / you pay).
+- **Mobile-native hardening:** ≥52px tab targets and ≥40px buttons, 16px
+  inputs on small screens (no iOS focus zoom), transparent tap highlight,
+  `touch-action: manipulation`, no overscroll chaining, safe-area gutters
+  on notched devices.
+
+## [2.1.0] — 2026-09-05
+
+### Added
+- **Personal tab: true monthly total** — the hero now shows personal spend
+  **plus your share of expenses across all your groups**, and a new
+  "Month-by-month total" card breaks every month into personal · groups.
+
+### Changed
+- Profile updates now also refresh group data immediately.
+- PWA: the on-demand pdf.js chunk is excluded from the service-worker precache
+  (it exceeded Workbox's limit and shouldn't slow first visits); it loads from
+  the network when a PDF is imported.
+- Demo mock: `.in()` filter support so the combined-spend feature works in the
+  offline preview.
+
 ## [2.0.0] — 2026-08-31
 
 > **Upgrade note:** run `supabase/migration_v4.sql` once in the Supabase SQL Editor

@@ -5,6 +5,12 @@ const PALETTE = [
   '#B65C5C', '#4E8098', '#8C7A4E', '#A0526D',
 ]
 
+// SVG text has no CSS ellipsis — bound the center strings in JS instead.
+function truncateLabel(label) {
+  const t = String(label || '')
+  return t.length > 16 ? `${t.slice(0, 15)}\u2026` : t
+}
+
 export default function DonutChart({ data, selected, onSelect, formatValue }) {
   const total = data.reduce((sum, d) => sum + d.value, 0)
   if (total <= 0) return null
@@ -53,9 +59,14 @@ export default function DonutChart({ data, selected, onSelect, formatValue }) {
           </circle>
         ))}
         <text x={cx} y={cy - 6} textAnchor="middle" className="donut-center-label">
-          {active ? active.label : 'Total'}
+          {truncateLabel(active ? active.label : 'Total')}
         </text>
-        <text x={cx} y={cy + 14} textAnchor="middle" className="donut-center-value">
+        <text
+          x={cx}
+          y={cy + 14}
+          textAnchor="middle"
+          className={`donut-center-value ${formatValue(active ? active.value : total).length > 10 ? 'donut-center-value-sm' : ''}`}
+        >
           {formatValue(active ? active.value : total)}
         </text>
       </svg>

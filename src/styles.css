@@ -243,8 +243,20 @@ input, select { font-family: var(--font-ui); }
 .activity-row.settlement .activity-desc { color: var(--pine); }
 .activity-main { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .activity-main.clickable { cursor: pointer; }
-.activity-desc { font-weight: 500; }
-.activity-meta { font-size: 0.8rem; color: var(--ink-soft); }
+.activity-desc { font-weight: 550; font-size: 1.05rem; line-height: 1.3; } /* 1.5x the category tag */
+/* meta line as a small pill box — readable, bounded, consistent */
+.activity-meta {
+  align-self: flex-start;
+  max-width: 100%;
+  font-size: 0.74rem;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 9px;
+  line-height: 1.35;
+}
+[data-theme='dark'] .activity-meta { background: rgba(255, 255, 255, 0.05); }
 .split-detail {
   margin-top: 8px;
   gap: 4px;
@@ -425,7 +437,37 @@ input, select { font-family: var(--font-ui); }
   padding: 6px 0;
   border-radius: 10px;
 }
-.tab.active { color: var(--pine); }
+/* --- active tab: themed circle behind the icon, lifted like a 3D button --- */
+.tab { transition: color 0.18s ease; }
+.tab .tab-icon {
+  width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.18s ease, box-shadow 0.22s ease, color 0.18s ease;
+}
+.tab.active { color: var(--pine); font-weight: 650; }
+.tab.active .tab-icon {
+  background: var(--pine);
+  color: #fff;
+  transform: translateY(-7px) scale(1.06);
+  box-shadow: 0 7px 16px color-mix(in srgb, var(--pine) 42%, transparent),
+              0 2px 4px rgba(0, 0, 0, 0.14),
+              inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+/* dark mode: brighter mint circle with dark ink icon reads better on the dark bar */
+[data-theme='dark'] .tab.active { color: #9FD6C2; }
+[data-theme='dark'] .tab.active .tab-icon {
+  background: #7FB8A3;
+  color: #14201B;
+  box-shadow: 0 7px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+/* press feedback: the button pushes in under the finger, springs back on release */
+.tab:active .tab-icon { transform: translateY(-2px) scale(0.9); }
+.tab:not(.active):active .tab-icon { transform: scale(0.88); background: color-mix(in srgb, var(--pine) 12%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .tab .tab-icon, .tab { transition: none; }
+  .tab.active .tab-icon { transform: none; }
+}
 .tab-icon { font-size: 1.05rem; line-height: 1; display: inline-flex; align-items: center; }
 .tab-icon svg { display: block; }
 .tab.add-btn {
@@ -605,7 +647,7 @@ input, select { font-family: var(--font-ui); }
   border-color: var(--pine);
 }
 .activity-cat-tag {
-  font-size: 0.65rem;
+  font-size: 0.7rem; /* desc:tag = 1.05rem : 0.7rem = 1.5 : 1 */
   background: var(--pine);
   color: #fff;
   border-radius: 999px;
@@ -1461,3 +1503,183 @@ button:disabled { cursor: not-allowed; }
 .personal-actions { gap: 9px; }
 
 .pdf-password { display: flex; flex-direction: column; gap: 7px; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+
+/* ---------- v3 design primitives: avatars + category chips ---------- */
+.avatar {
+  display: inline-grid; place-items: center; flex: none;
+  border-radius: 50%;
+  font-weight: 700; letter-spacing: 0.02em;
+  user-select: none;
+}
+.cat-chip {
+  display: inline-grid; place-items: center; flex: none;
+  border-radius: 12px;
+}
+[data-theme='dark'] .cat-chip { filter: brightness(1.25); }
+
+/* ---------- v3 row layouts ---------- */
+.person-row { display: flex; align-items: center; gap: 11px; }
+.person-row .ledger-name { flex: 1; }
+.activity-row { display: flex; align-items: flex-start; gap: 11px; }
+.activity-row > .cat-chip { margin-top: 2px; }
+.transfer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.transfer-people { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.transfer-arrow { color: var(--ink-soft); font-size: 0.85rem; }
+.transfer-text { flex: 1; min-width: 140px; }
+
+/* ---------- mobile-native hardening (iOS/Android/web) ---------- */
+html { -webkit-tap-highlight-color: transparent; }
+body { overscroll-behavior-y: none; -webkit-text-size-adjust: 100%; }
+button, .tab, .ui-button { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.tabbar .tab { min-height: 52px; }
+.ui-button, .icon-btn { min-height: 40px; min-width: 40px; }
+@media (max-width: 620px) {
+  /* 16px inputs stop iOS Safari from auto-zooming on focus */
+  input, select, textarea, .ui-input { font-size: 16px; }
+}
+@supports (padding: max(0px)) {
+  .content { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+}
+
+/* ---------- month-by-month boxes (constant size, lakh-proof) ---------- */
+.month-grid {
+  list-style: none; margin: 0; padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
+  gap: 9px;
+}
+.month-box {
+  height: 104px; /* constant: every box identical regardless of value */
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  overflow: hidden;
+  background: var(--paper);
+}
+[data-theme='dark'] .month-box { background: rgba(255, 255, 255, 0.03); }
+.month-box-label {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.month-box-total {
+  font-size: 1.06rem; font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.month-box-split { display: flex; flex-direction: column; gap: 1px; }
+.month-box-part {
+  font-size: 0.71rem; color: var(--ink-soft);
+  display: flex; justify-content: space-between; gap: 6px;
+  white-space: nowrap; overflow: hidden;
+}
+.month-box-part .money { font-size: 0.73rem; font-variant-numeric: tabular-nums; }
+@media (max-width: 400px) { .month-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* ============================================================
+   BOUNDING SYSTEM — "text yields, numbers hold"
+   Every row is a bounded container. Text cells flex + ellipsize
+   inside their box; money cells never wrap and never truncate.
+   A change in one cell can never move or break its siblings.
+   ============================================================ */
+
+/* rows are bounded flex containers; children may shrink (min-width: 0) */
+.ledger-row, .transfer-row, .activity-row, .import-row,
+.person-spend-toggle, .totals-row, .month-header, .split-detail li,
+.import-footer, .persona-trait {
+  min-width: 0;
+}
+.ledger-row > *, .transfer-row > *, .activity-row > *,
+.import-row > *, .month-header > *, .split-detail li > * {
+  min-width: 0;
+}
+
+/* TEXT CELLS: take remaining space, truncate inside it */
+.ledger-name, .transfer-text, .totals-label, .month-title,
+.import-name, .import-date, .activity-meta,
+.persona-trait-value, .persona-trait-detail, .persona-peek,
+.split-detail li > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ledger-name, .transfer-text { flex: 1 1 auto; }
+
+/* descriptions get two lines before clamping (names get one) */
+.activity-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* NUMBER CELLS: fixed, whole, aligned — never wrap, never shrink */
+.ledger-row .money, .transfer-row .money, .activity-row > .money,
+.month-header .money, .totals-row .money, .split-detail .money,
+.import-row .money, .hero-amount, .insight-stat-value,
+.month-box-total, .month-box-part .money {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* hero scales down fluidly instead of overflowing on huge values */
+.hero-amount { font-size: clamp(1.55rem, 8.5vw, 2.3rem); max-width: 100%; }
+
+/* stat cards keep constant footprint regardless of value length */
+.insight-stat-card { min-height: 92px; overflow: hidden; }
+.insight-stat-value { overflow: hidden; text-overflow: ellipsis; display: block; }
+.insight-stat-detail { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+
+/* ---------- bounding sweep: remaining surfaces ---------- */
+/* top bar: long group names ellipsize between the icons */
+.topbar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* card titles inside header rows never push their buttons */
+.card-title-row { min-width: 0; }
+.card-title-row .card-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* group settings: name + invite code stay in their boxes */
+.group-name-row { min-width: 0; }
+.group-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.invite-code, .code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+/* comments: author truncates, body WRAPS inside the bubble —
+   long unbroken strings (urls, keyboard mash) break instead of overflowing */
+.comment-row { min-width: 0; }
+.comment-author { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+.comment-body, .comment-text, .pay-confirm-text, .hint, .empty {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* toasts: message wraps within the toast, buttons hold */
+.toast { max-width: min(92vw, 420px); }
+.toast > span, .toast p { overflow-wrap: anywhere; min-width: 0; }
+.toast-action, .toast-dismiss { flex: none; }
+
+/* donut legend: label yields, numbers hold */
+.donut-legend li { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.donut-legend-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.donut-legend-pct, .donut-legend .money { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.donut-center-value { font-variant-numeric: tabular-nums; }
+.donut-center-value-sm { font-size: 0.78em; }
+
+/* add-expense split rows: name yields, input holds its width */
+.split-list li { min-width: 0; }
+.split-check { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; }
+.split-input { flex: none; }
+
+/* selects: chosen value ellipsizes inside the trigger */
+button[role='combobox'] { min-width: 0; max-width: 100%; }
+button[role='combobox'] > span:first-of-type { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* profile: name + email bounded */
+.profile-name-row { min-width: 0; }
+.profile-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.profile-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+/* generic guard: no horizontal scroll leaks, ever */
+.page, .card { min-width: 0; max-width: 100%; }
+.content { overflow-x: hidden; }
