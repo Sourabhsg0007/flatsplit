@@ -175,7 +175,7 @@ export default function Activity({ me, members, expenses, settlements, currency,
     const mine = e.splits?.find((sp) => sp.user_id === me.id)
     const isOpen = expanded === e.id
     return (
-      <li key={`e-${e.id}`} className={`activity-row ${isOpen ? 'open' : ''}`}>
+      <li key={`e-${e.id}`} className={`activity-row with-chip ${isOpen ? 'open' : ''}`}>
         <CategoryChip category={e.category} />
         <div
           className="activity-main clickable"
