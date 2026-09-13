@@ -609,6 +609,7 @@ input, select { font-family: var(--font-ui); }
 .activity-controls { gap: 8px; }
 .activity-search {
   flex: 1;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 9px 12px;
@@ -1007,23 +1008,28 @@ button:disabled { cursor: not-allowed; }
     grid-row: 2;
   }
   /* expense rows have a leading CategoryChip — give the chip its own 34px column */
-  .activity-row:not(.settlement) {
+  .activity-row:has(> .cat-chip),
+  .activity-row.with-chip {
     grid-template-columns: 34px minmax(0, 1fr) auto;
   }
-  .activity-row:not(.settlement) > .cat-chip {
+  .activity-row:has(> .cat-chip) > .cat-chip,
+  .activity-row.with-chip > .cat-chip {
     grid-column: 1;
     grid-row: 1;
     align-self: start;
   }
-  .activity-row:not(.settlement) .activity-main {
+  .activity-row:has(> .cat-chip) .activity-main,
+  .activity-row.with-chip .activity-main {
     grid-column: 2 / -1;
     grid-row: 1;
   }
-  .activity-row:not(.settlement) > .money {
+  .activity-row:has(> .cat-chip) > .money,
+  .activity-row.with-chip > .money {
     grid-column: 2;
     grid-row: 2;
   }
-  .activity-row:not(.settlement) .activity-actions {
+  .activity-row:has(> .cat-chip) .activity-actions,
+  .activity-row.with-chip .activity-actions {
     grid-column: 3;
     grid-row: 2;
   }
@@ -1088,7 +1094,7 @@ button:disabled { cursor: not-allowed; }
 .top-expense-row > .money { font-size: .88rem; }
 .people-insight-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(130px, 1fr) max-content; align-items: center; gap: 12px; border-bottom: 1px dashed var(--border); padding: 12px 0; }
 .people-insight-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.people-insight-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.people-insight-name strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .people-insight-paid { overflow: hidden; color: var(--muted-foreground); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
 .people-insight-row > .money { display: inline-flex; align-items: center; gap: 5px; font-size: .88rem; }
 
@@ -1540,13 +1546,36 @@ button:disabled { cursor: not-allowed; }
 
 /* ---------- v3 row layouts ---------- */
 .person-row { display: flex; align-items: center; gap: 11px; }
-.person-row .ledger-name { flex: 1; }
+.person-row .ledger-name { flex: 1; min-width: 0; }
+.ledger-name-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .activity-row { display: flex; align-items: flex-start; gap: 11px; }
 .activity-row > .cat-chip { margin-top: 2px; }
 .transfer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .transfer-people { display: inline-flex; align-items: center; gap: 4px; flex: none; }
 .transfer-arrow { color: var(--ink-soft); font-size: 0.85rem; }
-.transfer-text { flex: 1; min-width: 140px; }
+.transfer-text { flex: 1; min-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 620px) {
+  /* activity rows: mobile grid (overrides the flex above) */
+  .activity-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: start; }
+  .activity-row .activity-main { grid-column: 1 / -1; min-width: 0; width: 100%; }
+  .activity-row > .money { grid-column: 1; grid-row: 2; align-self: center; }
+  .activity-row .split-detail { width: 100%; }
+  .activity-actions { grid-column: 2; grid-row: 2; flex-wrap: wrap; justify-content: flex-end; }
+  .activity-row.settlement > .icon-btn { grid-column: 2; grid-row: 2; }
+  .activity-row:has(> .cat-chip),
+  .activity-row.with-chip { grid-template-columns: 34px minmax(0, 1fr) auto; }
+  .activity-row:has(> .cat-chip) > .cat-chip,
+  .activity-row.with-chip > .cat-chip { grid-column: 1; grid-row: 1; align-self: start; }
+  .activity-row:has(> .cat-chip) .activity-main,
+  .activity-row.with-chip .activity-main { grid-column: 2 / -1; grid-row: 1; }
+  .activity-row:has(> .cat-chip) > .money,
+  .activity-row.with-chip > .money { grid-column: 2; grid-row: 2; }
+  .activity-row:has(> .cat-chip) .activity-actions,
+  .activity-row.with-chip .activity-actions { grid-column: 3; grid-row: 2; }
+  .transfer-text { min-width: 90px; }
+  .activity-sort { min-width: 90px; }
+}
 
 /* ---------- mobile-native hardening (iOS/Android/web) ---------- */
 html { -webkit-tap-highlight-color: transparent; }

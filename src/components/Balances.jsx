@@ -55,7 +55,7 @@ export default function Balances({ me, members, expenses, settlements, currency,
               <li key={m.id} className="ledger-row person-row">
                 <Avatar name={m.full_name} size={34} />
                 <span className="ledger-name">
-                  {m.full_name}
+                  <span className="ledger-name-text">{m.full_name}</span>
                   {m.id === me.id && <Badge variant="secondary">you</Badge>}
                 </span>
                 <span className={`money ${v > 0.009 ? 'pos' : v < -0.009 ? 'neg' : 'zero'}`}>

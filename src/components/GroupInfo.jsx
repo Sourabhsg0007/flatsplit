@@ -276,7 +276,7 @@ export default function GroupInfo({ group, me, members, groups, onSwitchGroup, o
           {members.map((m) => (
             <li key={m.id} className="ledger-row">
               <span className="ledger-name">
-                {m.full_name}
+                <span className="ledger-name-text">{m.full_name}</span>
                 {m.id === me.id && <em className="you-tag">you</em>}
                 {group.created_by === m.id && (
                   <em className="you-tag" style={{ background: 'var(--pine)', color: '#fff', borderColor: 'var(--pine)' }}>admin</em>

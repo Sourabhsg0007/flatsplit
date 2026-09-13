@@ -371,7 +371,7 @@ export default function Personal({ me, groups, currency }) {
             </div>
             <ul className="activity-list">
               {month.items.map((item) => (
-                <li key={item.id} className="activity-row">
+                <li key={item.id} className="activity-row with-chip">
                   <CategoryChip category={item.category} />
                   <div className="activity-main">
                     <span className="activity-desc">{item.description}</span>
