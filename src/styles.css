@@ -1006,6 +1006,27 @@ button:disabled { cursor: not-allowed; }
     grid-column: 2;
     grid-row: 2;
   }
+  /* expense rows have a leading CategoryChip — give the chip its own 34px column */
+  .activity-row:not(.settlement) {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+  }
+  .activity-row:not(.settlement) > .cat-chip {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+  }
+  .activity-row:not(.settlement) .activity-main {
+    grid-column: 2 / -1;
+    grid-row: 1;
+  }
+  .activity-row:not(.settlement) > .money {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .activity-row:not(.settlement) .activity-actions {
+    grid-column: 3;
+    grid-row: 2;
+  }
   .insight-row { grid-template-columns: minmax(86px, 1fr) minmax(80px, 1.4fr) auto; gap: 7px; }
 }
 
