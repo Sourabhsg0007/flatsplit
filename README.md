@@ -173,9 +173,12 @@ For Google sign-in to work locally, add `http://localhost:5173` to Supabase's
 - Per-group currency selection, dark mode, PWA install with shortcuts
 - Toast notifications and styled confirm dialogs in place of browser alerts
 
-> **Upgrading an existing deployment?** Run `supabase/migration_v4.sql` once in
-> the Supabase SQL Editor (after the earlier migrations). New installs need
-> `schema.sql` plus the migrations in order.
+> **Upgrading an existing deployment?** Run `supabase/migration_v7.sql` and then
+> `supabase/migration_v8.sql` once each in the Supabase SQL Editor (after the
+> earlier migrations). v7 tightens the `profiles_select` policy, which previously
+> let any signed-in user read every profile row. v8 limits editing and deleting to
+> whoever created the record, and limits recording a payment to its payer or
+> receiver. New installs need `schema.sql` plus the migrations in order.
 
 ---
 
