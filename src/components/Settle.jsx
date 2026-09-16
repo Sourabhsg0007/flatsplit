@@ -86,11 +86,31 @@ export default function Settle({ group, me, members, expenses, settlements, onSa
     setError(null)
   }
 
+  // A payment can only be recorded by one of its two ends, so picking a
+  // flatmate on one side pins you to the other.
+  function chooseFrom(id) {
+    setFromUser(id)
+    if (id !== me.id) setToUser(me.id)
+    else if (toUser === me.id) setToUser(others[0]?.id || '')
+    setError(null)
+  }
+
+  function chooseTo(id) {
+    setToUser(id)
+    if (id !== me.id) setFromUser(me.id)
+    else if (fromUser === me.id) setFromUser(others[0]?.id || '')
+    setError(null)
+  }
+
   async function save() {
     setError(null)
     const amt = Number(amount)
     if (!fromUser || !toUser) { setError('Pick who paid and who received.'); return }
     if (fromUser === toUser) { setError('Payer and receiver need to be different people.'); return }
+    if (fromUser !== me.id && toUser !== me.id) {
+      setError('You can only record a payment you were part of.')
+      return
+    }
     if (!amt || amt <= 0) { setError('Enter an amount greater than zero.'); return }
 
     setBusy(true)
@@ -150,7 +170,9 @@ export default function Settle({ group, me, members, expenses, settlements, onSa
                     <IndianRupee size={13} /> Pay
                   </Button>
                 )}
-                <Button size="sm" variant="outline" onClick={() => applySuggestion(t)}>Use</Button>
+                {(t.from === me.id || t.to === me.id) && (
+                  <Button size="sm" variant="outline" onClick={() => applySuggestion(t)}>Use</Button>
+                )}
                 {canPay(t) && payMenuFor === i && (
                   <span className="pay-app-row">
                     {payApps.map((app) => (
@@ -188,20 +210,21 @@ export default function Settle({ group, me, members, expenses, settlements, onSa
         <h2 className="card-title">Record a payment</h2>
         <p className="hint">
           Use this after money actually changes hands (UPI, cash, whatever) — it zeroes out that
-          much of the balance.
+          much of the balance. You can only record payments you sent or received, so one side
+          always stays you.
         </p>
 
         <div className="field-row">
           <label className="field">
             <Label htmlFor="settle-from">From</Label>
-            <Select value={fromUser} onValueChange={setFromUser}>
+            <Select value={fromUser} onValueChange={chooseFrom}>
               <SelectTrigger id="settle-from"><SelectValue /></SelectTrigger>
               <SelectContent>{members.map((m) => <SelectItem key={m.id} value={m.id}>{m.id === me.id ? `${m.full_name} (you)` : m.full_name}</SelectItem>)}</SelectContent>
             </Select>
           </label>
           <label className="field">
             <Label htmlFor="settle-to">To</Label>
-            <Select value={toUser} onValueChange={setToUser}>
+            <Select value={toUser} onValueChange={chooseTo}>
               <SelectTrigger id="settle-to"><SelectValue /></SelectTrigger>
               <SelectContent>{members.map((m) => <SelectItem key={m.id} value={m.id}>{m.id === me.id ? `${m.full_name} (you)` : m.full_name}</SelectItem>)}</SelectContent>
             </Select>

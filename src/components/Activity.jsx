@@ -164,9 +164,11 @@ export default function Activity({ me, members, expenses, settlements, currency,
             <span className="activity-meta">{prettyDate(item.date)} · settlement</span>
           </div>
           <span className="money">{fmtMoney(s.amount, currency)}</span>
-          <Button size="icon" variant="ghost" className="icon-btn" title="Delete payment" onClick={() => setConfirmTarget({ kind: 'settlement', data: s })}>
-            <Trash2 size={16} />
-          </Button>
+          {s.created_by === me.id && (
+            <Button size="icon" variant="ghost" className="icon-btn" title="Delete payment" onClick={() => setConfirmTarget({ kind: 'settlement', data: s })}>
+              <Trash2 size={16} />
+            </Button>
+          )}
         </li>
       )
     }
@@ -209,12 +211,16 @@ export default function Activity({ me, members, expenses, settlements, currency,
           <Button size="icon" variant="ghost" className="icon-btn" title="Repeat this expense" onClick={() => onRepeatExpense(e)}>
             <Copy size={15} />
           </Button>
-          <Button size="icon" variant="ghost" className="icon-btn" title="Edit expense" onClick={() => onEditExpense(e)}>
-            <Pencil size={15} />
-          </Button>
-          <Button size="icon" variant="ghost" className="icon-btn danger" title="Delete expense" onClick={() => setConfirmTarget({ kind: 'expense', data: e })}>
-            <Trash2 size={15} />
-          </Button>
+          {e.created_by === me.id && (
+            <>
+              <Button size="icon" variant="ghost" className="icon-btn" title="Edit expense" onClick={() => onEditExpense(e)}>
+                <Pencil size={15} />
+              </Button>
+              <Button size="icon" variant="ghost" className="icon-btn danger" title="Delete expense" onClick={() => setConfirmTarget({ kind: 'expense', data: e })}>
+                <Trash2 size={15} />
+              </Button>
+            </>
+          )}
         </div>
       </li>
     )

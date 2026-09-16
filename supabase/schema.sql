@@ -105,6 +105,21 @@ as $$
   );
 $$;
 
+create or replace function public.shares_group(target uuid)
+returns boolean
+language sql
+security definer set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.group_members me
+    join public.group_members them on them.group_id = me.group_id
+    where me.user_id = auth.uid()
+      and them.user_id = target
+  );
+$$;
+
 -- ---------- ROW LEVEL SECURITY ----------
 
 alter table public.profiles       enable row level security;
@@ -114,10 +129,11 @@ alter table public.expenses       enable row level security;
 alter table public.expense_splits enable row level security;
 alter table public.settlements    enable row level security;
 
--- Profiles: any signed-in user can read names (needed to show members);
--- you can only edit your own.
+-- Profiles: you can read your own row and those of people you share a
+-- group with (needed to show members); you can only edit your own.
 create policy "profiles_select" on public.profiles
-  for select to authenticated using (true);
+  for select to authenticated
+  using (id = auth.uid() or public.shares_group(id));
 create policy "profiles_update_own" on public.profiles
   for update to authenticated using (id = auth.uid());
 
@@ -138,10 +154,12 @@ create policy "expenses_insert" on public.expenses
   for insert to authenticated
   with check (public.is_member(group_id) and created_by = auth.uid());
 create policy "expenses_update" on public.expenses
-  for update to authenticated using (public.is_member(group_id))
-  with check (public.is_member(group_id));
+  for update to authenticated
+  using (public.is_member(group_id) and created_by = auth.uid())
+  with check (public.is_member(group_id) and created_by = auth.uid());
 create policy "expenses_delete" on public.expenses
-  for delete to authenticated using (public.is_member(group_id));
+  for delete to authenticated
+  using (public.is_member(group_id) and created_by = auth.uid());
 
 -- Expense splits: tied to the parent expense's group.
 create policy "splits_select" on public.expense_splits
@@ -154,17 +172,28 @@ create policy "splits_delete" on public.expense_splits
   for delete to authenticated
   using (public.is_member((select group_id from public.expenses e where e.id = expense_id)));
 
--- Settlements: members can record and delete payments in their group.
+-- Settlements: you can record a payment only if you are one end of it,
+-- and only whoever recorded it can change or delete it.
 create policy "settlements_select" on public.settlements
   for select to authenticated using (public.is_member(group_id));
 create policy "settlements_insert" on public.settlements
   for insert to authenticated
-  with check (public.is_member(group_id) and created_by = auth.uid());
+  with check (
+    public.is_member(group_id)
+    and created_by = auth.uid()
+    and (from_user = auth.uid() or to_user = auth.uid())
+  );
 create policy "settlements_update" on public.settlements
-  for update to authenticated using (public.is_member(group_id))
-  with check (public.is_member(group_id));
+  for update to authenticated
+  using (public.is_member(group_id) and created_by = auth.uid())
+  with check (
+    public.is_member(group_id)
+    and created_by = auth.uid()
+    and (from_user = auth.uid() or to_user = auth.uid())
+  );
 create policy "settlements_delete" on public.settlements
-  for delete to authenticated using (public.is_member(group_id));
+  for delete to authenticated
+  using (public.is_member(group_id) and created_by = auth.uid());
 
 -- ---------- RPC: create a group ----------
 
@@ -304,12 +333,18 @@ security definer set search_path = public
 as $$
 declare
   gid uuid;
+  owner uuid;
   split_sum numeric;
 begin
-  select group_id into gid from public.expenses where id = eid;
+  select group_id, created_by into gid, owner
+  from public.expenses where id = eid;
   if gid is null then raise exception 'Expense not found'; end if;
   if not public.is_member(gid) then
     raise exception 'You are not a member of this group';
+  end if;
+  -- SECURITY DEFINER runs past expenses_update, so enforce it here too.
+  if owner is distinct from auth.uid() then
+    raise exception 'Only the person who added this expense can edit it';
   end if;
 
   select coalesce(sum((s ->> 'amount')::numeric), 0)

@@ -95,11 +95,15 @@ Editor for a new Supabase project.
 This is suitable for trusted roommates, but it is not a full financial audit
 system:
 
-- Any group member can currently delete any group expense or settlement.
-- Any group member can record a payment involving any other two members.
-- The current `profiles_select` policy permits any signed-in user to read profile
-  rows, including email addresses. Normal UI screens only show group members,
-  but the policy is broader than ideal for a public product.
+- Expenses can only be edited or deleted by whoever added them, and payments only
+  by whoever recorded them (`supabase/migration_v8.sql`). There is no group-owner
+  override, so an entry left behind by a departed flatmate cannot be removed.
+- A payment can only be recorded by its payer or receiver, so nobody can invent a
+  transfer between two other people.
+- `profiles_select` is scoped to yourself plus people you share a group with
+  (`supabase/migration_v7.sql`). Before that migration the policy was
+  `using (true)`, which let any signed-in user read every profile row,
+  including email addresses — run it if your deployment predates v7.
 - Invite codes are six characters; share them only with people who should join.
 - There is no edit history, role system, CSV export, receipt upload, or backup UI.
 
