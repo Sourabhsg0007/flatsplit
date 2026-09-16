@@ -3,3 +3,6 @@ dist
 .env
 .env.local
 .DS_Store
+
+# Supabase CLI local state (linked project ref, version stamps)
+supabase/.temp/
